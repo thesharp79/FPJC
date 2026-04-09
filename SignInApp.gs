@@ -1281,7 +1281,8 @@ const STALE_BASKET_CLEANUP_BATCH_LIMIT = 25;
 const STALE_BASKET_CLEANUP_THROTTLE_SECONDS = 900;
 
 var SIGNIN_PERF_RUNTIME_ = {
-  attendanceByDate: {}
+  attendanceByDate: {},
+  attendanceByDateLastRow: {}
 };
 
 function perfNow_() {
@@ -1369,10 +1370,17 @@ function getAttendanceSignedInSetForDate_(sessionDateIso) {
     const cached = CacheService.getScriptCache().get(cacheKey);
     if (cached) {
       const parsed = JSON.parse(cached);
-      SIGNIN_PERF_RUNTIME_.attendanceByDate[sessionDateIso] = parsed;
-      perfLog_('alreadySignedIn_', 'script cache hit', t, 'date=' + sessionDateIso + ' size=' + Object.keys(parsed).length);
+      let cachedSet = parsed;
+      let cachedLastRow = 0;
+      if (parsed && typeof parsed === 'object' && parsed.set && typeof parsed.set === 'object') {
+        cachedSet = parsed.set;
+        cachedLastRow = Number(parsed.lastRow || 0);
+      }
+      SIGNIN_PERF_RUNTIME_.attendanceByDate[sessionDateIso] = cachedSet || {};
+      SIGNIN_PERF_RUNTIME_.attendanceByDateLastRow[sessionDateIso] = cachedLastRow;
+      perfLog_('alreadySignedIn_', 'script cache hit', t, 'date=' + sessionDateIso + ' size=' + Object.keys(cachedSet || {}).length);
       perfLog_('alreadySignedIn_', 'build set total', total, 'date=' + sessionDateIso + ' source=script-cache');
-      return parsed;
+      return cachedSet || {};
     }
     perfLog_('alreadySignedIn_', 'script cache miss', t, 'date=' + sessionDateIso);
   } catch (e) {
@@ -1407,9 +1415,13 @@ function getAttendanceSignedInSetForDate_(sessionDateIso) {
   }
 
   SIGNIN_PERF_RUNTIME_.attendanceByDate[sessionDateIso] = set;
+  SIGNIN_PERF_RUNTIME_.attendanceByDateLastRow[sessionDateIso] = lastRow;
   t = perfNow_();
   try {
-    CacheService.getScriptCache().put(cacheKey, JSON.stringify(set), 120);
+    CacheService.getScriptCache().put(cacheKey, JSON.stringify({
+      set: set,
+      lastRow: lastRow
+    }), 120);
     perfLog_('alreadySignedIn_', 'script cache write', t, 'date=' + sessionDateIso + ' size=' + Object.keys(set).length);
   } catch (e) {
     perfLog_('alreadySignedIn_', 'script cache write failed', t, 'date=' + sessionDateIso + ' err=' + String(e));
@@ -1422,6 +1434,7 @@ function getAttendanceSignedInSetForDate_(sessionDateIso) {
 
 function invalidateAttendanceDateCache_(sessionDateIso) {
   delete SIGNIN_PERF_RUNTIME_.attendanceByDate[sessionDateIso];
+  delete SIGNIN_PERF_RUNTIME_.attendanceByDateLastRow[sessionDateIso];
   try {
     CacheService.getScriptCache().remove('signin_attendance_date_' + sessionDateIso);
   } catch (e) {}
@@ -1470,10 +1483,15 @@ function buildBasketView_(basketId) {
 
 function putAttendanceSignedInSetForDate_(sessionDateIso, setObj) {
   SIGNIN_PERF_RUNTIME_.attendanceByDate[sessionDateIso] = setObj || {};
+  const lastRow = getAttendanceSheet_().getLastRow();
+  SIGNIN_PERF_RUNTIME_.attendanceByDateLastRow[sessionDateIso] = lastRow;
   try {
     CacheService.getScriptCache().put(
       'signin_attendance_date_' + sessionDateIso,
-      JSON.stringify(SIGNIN_PERF_RUNTIME_.attendanceByDate[sessionDateIso]),
+      JSON.stringify({
+        set: SIGNIN_PERF_RUNTIME_.attendanceByDate[sessionDateIso],
+        lastRow: lastRow
+      }),
       120
     );
   } catch (e) {
@@ -2334,7 +2352,7 @@ function addMemberToBasket(basketId, memberRow, sessionDateIso) {
   }
 
   t = perfNow_();
-  if (alreadySignedIn_(getAttendanceSheet_(), member.fullName, sessionDateIso)) {
+  if (alreadySignedIn_(member.fullName, sessionDateIso)) {
     perfLog_('addMemberToBasket', 'alreadySignedIn_', t, 'already=true date=' + sessionDateIso);
     return {
       basketId: basketId || '',
@@ -2488,12 +2506,17 @@ function liveAttendanceHasMemberOnDate_(fullName, sessionDateIso) {
 
 function writeAttendanceDateCache_(sessionDateIso, set) {
   SIGNIN_PERF_RUNTIME_.attendanceByDate[sessionDateIso] = set;
+  const lastRow = getAttendanceSheet_().getLastRow();
+  SIGNIN_PERF_RUNTIME_.attendanceByDateLastRow[sessionDateIso] = lastRow;
   try {
-    CacheService.getScriptCache().put('signin_attendance_date_' + sessionDateIso, JSON.stringify(set), 120);
+    CacheService.getScriptCache().put('signin_attendance_date_' + sessionDateIso, JSON.stringify({
+      set: set,
+      lastRow: lastRow
+    }), 120);
   } catch (e) {}
 }
 
-function alreadySignedIn_(attendanceSheet, fullName, sessionDateIso) {
+function alreadySignedIn_(fullName, sessionDateIso) {
   const t = perfNow_();
   const set = getAttendanceSignedInSetForDate_(sessionDateIso);
   const key = normaliseName_(fullName);
@@ -2504,7 +2527,18 @@ function alreadySignedIn_(attendanceSheet, fullName, sessionDateIso) {
     return false;
   }
 
-  // Defensive live verification for stale positive cache results.
+  const cachedLastRow = Number(SIGNIN_PERF_RUNTIME_.attendanceByDateLastRow[sessionDateIso] || 0);
+  if (cachedLastRow > 0) {
+    const rowCheckStart = perfNow_();
+    const currentLastRow = getAttendanceSheet_().getLastRow();
+    perfLog_('alreadySignedIn_', 'lastRow snapshot check', rowCheckStart, 'date=' + sessionDateIso + ' cached=' + cachedLastRow + ' current=' + currentLastRow);
+    if (currentLastRow === cachedLastRow) {
+      perfLog_('alreadySignedIn_', 'lookup in set', t, 'date=' + sessionDateIso + ' result=true (snapshot) name=' + toInitials_(fullName));
+      return true;
+    }
+  }
+
+  // Defensive live verification for stale positive cache results when row-count snapshot changed.
   const verifyStart = perfNow_();
   const liveResult = liveAttendanceHasMemberOnDate_(fullName, sessionDateIso);
   perfLog_('alreadySignedIn_', 'verify cached positive', verifyStart, 'date=' + sessionDateIso + ' live=' + liveResult + ' name=' + toInitials_(fullName));
@@ -2803,6 +2837,7 @@ function adminClearSignInCaches(sessionDateIso, basketId) {
 
   if (SIGNIN_PERF_RUNTIME_) {
     SIGNIN_PERF_RUNTIME_.attendanceByDate = {};
+    SIGNIN_PERF_RUNTIME_.attendanceByDateLastRow = {};
     SIGNIN_PERF_RUNTIME_.basketById = {};
     SIGNIN_PERF_RUNTIME_.basketLinesById = {};
     SIGNIN_PERF_RUNTIME_.basketSummaryById = {};
@@ -2999,164 +3034,3 @@ function getInitialState() {
     today: Utilities.formatDate(new Date(), SIGNIN_CFG.timezone, 'yyyy-MM-dd')
   };
 }
-
-function updateAttendancePaymentReceivedByRowRefs_(rowRefs) {
-  if (!rowRefs || !rowRefs.length) return;
-
-  const uniqueRowRefs = Array.from(new Set(
-    rowRefs
-      .map(function(ref) { return Number(ref); })
-      .filter(function(ref) { return ref > 1; })
-  ));
-
-  if (!uniqueRowRefs.length) return;
-
-  const sheet = getAttendanceSheet_();
-  const meta = getHeaderMeta_(sheet);
-  const idx = meta.headerMap;
-  const paymentReceivedCol = requireHeader_(idx, SIGNIN_CFG.attendanceHeaders.paymentReceived) + 1;
-
-  for (let i = 0; i < uniqueRowRefs.length; i++) {
-    sheet.getRange(uniqueRowRefs[i], paymentReceivedCol).setValue(true);
-  }
-
-  invalidateSheetRuntimeCache_(sheet);
-}
-
-function updateOtherPaymentsResolvedByLineIds_(basketId, lineIds, paymentMethod) {
-  if (!basketId || !lineIds || !lineIds.length) return;
-
-  const lineIdSet = {};
-  for (let i = 0; i < lineIds.length; i++) {
-    const lineId = String(lineIds[i] || '').trim();
-    if (lineId) lineIdSet[lineId] = true;
-  }
-
-  if (!Object.keys(lineIdSet).length) return;
-
-  const sheet = getOtherPaymentsSheet_();
-  const payload = getSheetPayload_(sheet);
-  const idx = payload.headerMap;
-
-  const basketIdCol = requireHeader_(idx, SIGNIN_CFG.otherPaymentHeaders.basketId);
-  const lineIdCol = requireHeader_(idx, SIGNIN_CFG.otherPaymentHeaders.lineId);
-  const paidCol = requireHeader_(idx, SIGNIN_CFG.otherPaymentHeaders.paid) + 1;
-  const paymentMethodCol = requireHeader_(idx, SIGNIN_CFG.otherPaymentHeaders.paymentMethod) + 1;
-
-  let changed = false;
-
-  for (let r = 1; r < payload.values.length; r++) {
-    const row = payload.values[r];
-    if (String(row[basketIdCol] || '').trim() !== basketId) continue;
-
-    const lineId = String(row[lineIdCol] || '').trim();
-    if (!lineIdSet[lineId]) continue;
-
-    sheet.getRange(r + 1, paidCol).setValue(true);
-    sheet.getRange(r + 1, paymentMethodCol).setValue(paymentMethod || '');
-    changed = true;
-  }
-
-  if (changed) {
-    invalidateSheetRuntimeCache_(sheet);
-  }
-}
-
-function resolveBasketPayment(basketId, paymentMethod, squarePaymentId) {
-  if (!basketId) throw new Error('Basket ID is required.');
-
-  const basket = getBasketRecord_(basketId);
-  if (!basket) throw new Error('Basket not found.');
-
-  if (basket.status === SIGNIN_CFG.basketStatuses.cancelled) {
-    throw new Error('This basket has been cancelled.');
-  }
-
-  if (basket.status === SIGNIN_CFG.basketStatuses.paymentResolved ||
-      basket.status === SIGNIN_CFG.basketStatuses.posted) {
-    return {
-      ok: true,
-      basketId: basketId,
-      message: 'Basket is already resolved.'
-    };
-  }
-
-  paymentMethod = paymentMethod || SIGNIN_CFG.paymentMethods.app;
-
-  const lines = getBasketLineRows_(basketId);
-  const basketLinesSheet = getBasketLinesSheet_();
-  const basketLinesPayload = getSheetPayload_(basketLinesSheet);
-  const basketLinesIdx = basketLinesPayload.headerMap;
-
-  const basketLineUpdates = [];
-  const attendanceRowRefsToResolve = [];
-  const otherPaymentLineIdsToResolve = [];
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-
-    if (line.paymentRequired === true) {
-      basketLineUpdates.push({
-        rowNumber: line.rowNumber,
-        paid: true,
-        paymentMethod: paymentMethod
-      });
-    }
-
-    if (line.lineType === 'ATTENDANCE' && line.paymentRequired === true && line.attendanceRowRef) {
-      attendanceRowRefsToResolve.push(line.attendanceRowRef);
-    }
-
-    if (line.lineType !== 'ATTENDANCE' &&
-        line.lineType !== 'SESSION_CHARGE' &&
-        line.paymentRequired === true) {
-      otherPaymentLineIdsToResolve.push(line.lineId);
-    }
-  }
-
-  if (basketLineUpdates.length) {
-    applyBasketLineUpdatesBatch_(basketLinesSheet, basketLinesIdx, basketLineUpdates);
-  }
-
-  updateAttendancePaymentReceivedByRowRefs_(attendanceRowRefsToResolve);
-  updateOtherPaymentsResolvedByLineIds_(basketId, otherPaymentLineIdsToResolve, paymentMethod);
-
-  const resolvedAt = new Date();
-  const basketUpdates = {
-    'Status': SIGNIN_CFG.basketStatuses.paymentResolved,
-    'Settlement Method': paymentMethod,
-    'Payment Resolved At': resolvedAt
-  };
-
-  if (squarePaymentId) {
-    basketUpdates['Square Payment ID'] = squarePaymentId;
-  }
-
-  updateBasketRow_(basket.rowNumber, basketUpdates);
-
-  return {
-    ok: true,
-    basketId: basketId,
-    message: 'Basket payment resolved.',
-    paymentMethod: paymentMethod
-  };
-}
-
-function resolveBasketPaymentApp(basketId, squarePaymentId) {
-  return resolveBasketPayment(
-    basketId,
-    SIGNIN_CFG.paymentMethods.app,
-    squarePaymentId || ''
-  );
-}
-
-function resolveBasketPaymentCard(basketId) {
-  return resolveBasketPayment(
-    basketId,
-    SIGNIN_CFG.paymentMethods.card,
-    ''
-  );
-}
-
-
-
