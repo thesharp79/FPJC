@@ -483,10 +483,8 @@
 
 
         html += '<div class="actions stack">';
-        html += '<button class="primary full" onclick="openPaymentLink(\'' + escapeJs(payment.paymentLinkUrl || '') + '\')">Payonline</button>';
+        html += '<button class="primary full" onclick="openPaymentLink(\'' + escapeJs(payment.paymentLinkUrl || '') + '\')">Pay online</button>';
         html += '<button class="secondary full" onclick="chooseDeskPayment(\'' + escapeJs(payment.basketId || '') + '\')">Pay at Desk</button>';
-        html += '<button class="primary full" onclick="openPaymentLink(\'' + escapeJs(payment.paymentLinkUrl || '') + '\')">Continue to payment</button>';
-        html += '<button class="secondary full" onclick="clearPaymentUi()">Close</button>';
         html += '</div>';
 
 
@@ -1002,4 +1000,3 @@
     </script>
   </body>
 </html>
-
