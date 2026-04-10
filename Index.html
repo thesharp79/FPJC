@@ -344,6 +344,7 @@
       let currentMatches = [];
       let initialState = null;
       const INITIAL_ROUTE = <?!= INITIAL_ROUTE_JSON ?>;
+      const MEMBERS_FORM_URL = <?!= MEMBERS_FORM_URL_JSON ?>;
       const DEBUG_CLIENT_PERF = false;
       let clientPerfSeq = 0;
 
@@ -598,6 +599,7 @@
 
             if (!matches || !matches.length) {
               showMessage('lookupMsg', 'No active member found for that date of birth.', false);
+              renderNoMemberFoundActions();
               clientPerfLog(perf, 'ui updated no matches');
               return;
             }
@@ -638,6 +640,23 @@
           container.appendChild(btn);
         });
 
+
+        document.getElementById('choicesWrap').classList.remove('hidden');
+      }
+
+      function renderNoMemberFoundActions() {
+        if (!MEMBERS_FORM_URL) return;
+
+        const container = document.getElementById('choices');
+        container.innerHTML = '';
+
+        const btn = document.createElement('button');
+        btn.className = 'choice';
+        btn.innerHTML =
+          '<strong>Add member details</strong><br>' +
+          '<span class="muted">Open the membership form in a new tab</span>';
+        btn.onclick = () => window.open(MEMBERS_FORM_URL, '_blank', 'noopener');
+        container.appendChild(btn);
 
         document.getElementById('choicesWrap').classList.remove('hidden');
       }
