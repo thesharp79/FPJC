@@ -920,7 +920,6 @@ function createBasketPaymentLink(basketId) {
   const payable = getBasketPayableLines_(basketId);
   const basket = payable.basket;
   const lines = payable.lines;
-
   const lineItems = buildSquareOrderLineItemsFromBasketLines_(lines);
 
   let totalAmount = 0;
@@ -931,11 +930,21 @@ function createBasketPaymentLink(basketId) {
   }
   totalAmount = roundMoney_(totalAmount);
 
+  const appUrl = ScriptApp.getService().getUrl();
+  const returnUrl =
+    appUrl +
+    '?returnFrom=square&basketId=' + encodeURIComponent(basketId);
+
   const body = {
     idempotency_key: 'basket-link-' + basketId,
     order: {
       location_id: cfg.locationId,
       line_items: lineItems
+    },
+    checkout_options: {
+      redirect_url: returnUrl,
+      enable_coupon: false,
+      enable_loyalty: false
     }
   };
 
@@ -949,7 +958,8 @@ function createBasketPaymentLink(basketId) {
     'Square Payment Link ID': paymentLink.id || '',
     'Notes': appendBasketNote_(
       basket.notes,
-      'Square payment link created on ' + Utilities.formatDate(new Date(), SIGNIN_CFG.timezone, 'dd/MM/yyyy HH:mm:ss')
+      'Square payment link created on ' +
+        Utilities.formatDate(new Date(), SIGNIN_CFG.timezone, 'dd/MM/yyyy HH:mm:ss')
     )
   });
 
@@ -960,7 +970,8 @@ function createBasketPaymentLink(basketId) {
     paymentLinkUrl: paymentLink.url || '',
     orderId: paymentLink.order_id || '',
     amount: totalAmount,
-    formattedAmount: formatCurrency_(totalAmount)
+    formattedAmount: formatCurrency_(totalAmount),
+    returnUrl: returnUrl
   };
 }
 
