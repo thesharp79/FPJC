@@ -343,6 +343,7 @@
       let currentBasketId = '';
       let currentMatches = [];
       let initialState = null;
+      const INITIAL_ROUTE = <?!= INITIAL_ROUTE_JSON ?>;
       const DEBUG_CLIENT_PERF = false;
       let clientPerfSeq = 0;
 
@@ -454,18 +455,87 @@
 
 
         html += '<div class="actions stack">';
-        html += '<button class="primary full" onclick="openPaymentLink(\'' + escapeJs(payment.paymentLinkUrl || '') + '\')">Open payment page</button>';
+        html += '<button class="primary full" onclick="openPaymentLink(\'' + escapeJs(payment.paymentLinkUrl || '') + '\')">Continue to payment</button>';
         html += '<button class="secondary full" onclick="clearPaymentUi()">Close</button>';
         html += '</div>';
 
 
         html += '<div class="status-note">';
-        html += 'Attendance has already been recorded. If app payment does not complete, the desk can take a manual payment later and mark attendance as paid.';
+        html += 'Attendance has already been recorded. After checkout, Square will return you here and the payment status will update automatically.';
         html += '</div>';
 
 
         body.innerHTML = html;
         card.classList.remove('hidden');
+      }
+
+
+      function renderPaymentReturnStatus(result) {
+        const card = document.getElementById('paymentCard');
+        const body = document.getElementById('paymentBody');
+
+
+        let html = '';
+        html += '<div class="summary-box">';
+
+
+        if (result && result.isPaid) {
+          html += '<div><strong>Payment confirmed.</strong></div>';
+        } else {
+          html += '<div><strong>Payment still pending.</strong></div>';
+        }
+
+
+        html += '<div style="margin-top:8px;"><strong>Basket:</strong> ' + escapeHtml(result && result.basketId ? result.basketId : '') + '</div>';
+        html += '<div><strong>Order state:</strong> ' + escapeHtml(result && result.orderState ? result.orderState : '') + '</div>';
+        html += '</div>';
+
+
+        html += '<div class="actions stack">';
+        html += '<button class="secondary full" onclick="clearPaymentUi()">Close</button>';
+        html += '</div>';
+
+
+        html += '<div class="status-note">';
+        if (result && result.isPaid) {
+          html += 'Your payment has been received and the attendance record has been updated.';
+        } else {
+          html += 'Your attendance is already recorded. If payment does not settle, the desk can still take a manual payment and mark it as paid.';
+        }
+        html += '</div>';
+
+
+        body.innerHTML = html;
+        card.classList.remove('hidden');
+      }
+
+
+      function checkReturnFromSquare() {
+        if (!INITIAL_ROUTE || INITIAL_ROUTE.returnFrom !== 'square' || !INITIAL_ROUTE.basketId) {
+          return;
+        }
+
+
+        clearAllMessages();
+        clearBasketUi();
+        resetChoiceArea();
+        setBusy(true, 'Checking payment status…');
+
+
+        google.script.run
+          .withSuccessHandler(result => {
+            setBusy(false);
+            renderPaymentReturnStatus(result);
+          })
+          .withFailureHandler(err => {
+            setBusy(false);
+            showMessage(
+              'lookupMsg',
+              err && err.message ? err.message : 'Could not check payment status.',
+              false
+            );
+          })
+          .checkBasketPaymentStatus(INITIAL_ROUTE.basketId);
       }
 
 
@@ -887,6 +957,7 @@
             document.getElementById('sessionDate').value = initialState.today || '';
             document.getElementById('dob').focus();
             backgroundPrewarm(initialState.today || '');
+            checkReturnFromSquare();
           })
           .withFailureHandler(err => {
             setBusy(false);
