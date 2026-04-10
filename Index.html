@@ -516,7 +516,6 @@
 
 
         html += '<div style="margin-top:8px;"><strong>Basket:</strong> ' + escapeHtml(result && result.basketId ? result.basketId : '') + '</div>';
-        html += '<div><strong>Order state:</strong> ' + escapeHtml(result && result.orderState ? result.orderState : '') + '</div>';
         html += '</div>';
 
 
@@ -535,6 +534,7 @@
 
 
         body.innerHTML = html;
+        setSignInCardVisible(false);
         card.classList.remove('hidden');
       }
 
