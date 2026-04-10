@@ -431,12 +431,18 @@
       function clearPaymentUi() {
         document.getElementById('paymentBody').innerHTML = '';
         document.getElementById('paymentCard').classList.add('hidden');
+        setSignInCardVisible(true);
       }
 
 
       function openPaymentLink(url) {
         if (!url) return;
         window.open(url, '_blank', 'noopener');
+      }
+
+
+      function setSignInCardVisible(isVisible) {
+        document.getElementById('app').classList.toggle('hidden', !isVisible);
       }
 
 
@@ -465,6 +471,7 @@
 
 
         body.innerHTML = html;
+        setSignInCardVisible(false);
         card.classList.remove('hidden');
       }
 
@@ -900,6 +907,5 @@
     </script>
   </body>
 </html>
-
 
 
