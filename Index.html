@@ -442,6 +442,28 @@
       }
 
 
+      function chooseDeskPayment(basketId) {
+        if (!basketId) {
+          clearPaymentUi();
+          return;
+        }
+
+        setBusy(true, 'Setting payment to desk…');
+        google.script.run
+          .withSuccessHandler(result => {
+            setBusy(false);
+            clearPaymentUi();
+            showMessage('lookupMsg', (result && result.message) || 'Payment marked as desk payment.', true);
+            document.getElementById('dob').focus();
+          })
+          .withFailureHandler(err => {
+            setBusy(false);
+            showMessage('lookupMsg', err && err.message ? err.message : 'Could not switch payment to desk.', false);
+          })
+          .markBasketPendingAsDeskPayment(basketId);
+      }
+
+
       function setSignInCardVisible(isVisible) {
         document.getElementById('app').classList.toggle('hidden', !isVisible);
       }
@@ -461,6 +483,8 @@
 
 
         html += '<div class="actions stack">';
+        html += '<button class="primary full" onclick="openPaymentLink(\'' + escapeJs(payment.paymentLinkUrl || '') + '\')">Payonline</button>';
+        html += '<button class="secondary full" onclick="chooseDeskPayment(\'' + escapeJs(payment.basketId || '') + '\')">Pay at Desk</button>';
         html += '<button class="primary full" onclick="openPaymentLink(\'' + escapeJs(payment.paymentLinkUrl || '') + '\')">Continue to payment</button>';
         html += '<button class="secondary full" onclick="clearPaymentUi()">Close</button>';
         html += '</div>';
@@ -978,5 +1002,4 @@
     </script>
   </body>
 </html>
-
 
