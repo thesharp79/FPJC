@@ -35,10 +35,11 @@
  * Run this manually, or on a time-based trigger (e.g. nightly).
  */
 function buildOrRefreshForm() {
+  const spreadsheetId = getScriptPropertyRequiredForFormRefresh_('SPREADSHEET_ID');
   const CONFIG = {
     // IDs for the specific form and sheet we manage
     formId: '1RCPr7e2KfCvfdFSENZrL_8t0PUY93NYBqR77CxmYb38',
-    sheetId: '1CubToI8fplSbXSy-9E9RJ1QCxGih1EVV3iiAa_lvBQk',
+    sheetId: spreadsheetId,
 
     // The tab that contains the 4 pre-built name lists
     calcTabName: 'Calc',
@@ -241,6 +242,14 @@ function buildOrRefreshForm() {
   }
 
   Logger.log('--- buildOrRefreshForm END ---');
+}
+
+function getScriptPropertyRequiredForFormRefresh_(propertyName) {
+  const value = PropertiesService.getScriptProperties().getProperty(propertyName);
+  if (value === null || String(value).trim() === '') {
+    throw new Error('Missing required Script Property: ' + propertyName);
+  }
+  return String(value).trim();
 }
 
 
