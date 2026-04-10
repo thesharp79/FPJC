@@ -1,6 +1,6 @@
-
 const SIGNIN_CFG = {
-  spreadsheetId: '1CubToI8fplSbXSy-9E9RJ1QCxGih1EVV3iiAa_lvBQk',
+  spreadsheetId: getScriptPropertyRequired_('SPREADSHEET_ID'),
+  membersFormUrl: getOptionalScriptProperty_('MEMBERS_FORM_URL'),
   timezone: Session.getScriptTimeZone() || 'Europe/London',
 
   sheetNames: {
@@ -129,6 +129,19 @@ basketHeaders: {
   }
 };
 
+function getScriptPropertyRequired_(propertyName) {
+  const value = PropertiesService.getScriptProperties().getProperty(propertyName);
+  if (value === null || String(value).trim() === '') {
+    throw new Error('Missing required Script Property: ' + propertyName);
+  }
+  return String(value).trim();
+}
+
+function getOptionalScriptProperty_(propertyName) {
+  const value = PropertiesService.getScriptProperties().getProperty(propertyName);
+  return value === null ? '' : String(value).trim();
+}
+
 function doGet(e) {
   const params = (e && e.parameter) ? e.parameter : {};
 
@@ -137,6 +150,7 @@ function doGet(e) {
     returnFrom: String(params.returnFrom || '').trim(),
     basketId: String(params.basketId || '').trim()
   });
+  template.MEMBERS_FORM_URL_JSON = JSON.stringify(SIGNIN_CFG.membersFormUrl || '');
 
   return template
     .evaluate()
@@ -3296,6 +3310,5 @@ function resolveBasketPaymentCard(basketId) {
     ''
   );
 }
-
 
 
