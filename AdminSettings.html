@@ -38,6 +38,7 @@
       <div class="row"><label>SQUARE_CURRENCY</label><input id="SQUARE_CURRENCY"></div>
       <div class="row"><label>SQUARE_SYNC_ROOT_CATEGORY_ID (optional)</label><input id="SQUARE_SYNC_ROOT_CATEGORY_ID"></div>
       <div class="row"><label>SQUARE_SYNC_ROOT_CATEGORY_NAME (optional)</label><input id="SQUARE_SYNC_ROOT_CATEGORY_NAME"></div>
+      <div class="row"><label>ENABLE_SUPPORT_MENU (optional)</label><input id="ENABLE_SUPPORT_MENU"></div>
     </div>
 
     <div class="actions">
@@ -71,7 +72,8 @@
           [
             'SPREADSHEET_ID','SQUARE_BASE_URL','SQUARE_APPLICATION_ID','SQUARE_ACCESS_TOKEN',
             'SQUARE_LOCATION_ID','SQUARE_VERSION','SQUARE_CURRENCY',
-            'SQUARE_SYNC_ROOT_CATEGORY_ID','SQUARE_SYNC_ROOT_CATEGORY_NAME'
+            'SQUARE_SYNC_ROOT_CATEGORY_ID','SQUARE_SYNC_ROOT_CATEGORY_NAME',
+            'ENABLE_SUPPORT_MENU'
           ].forEach((key) => {
             const node = document.getElementById(key);
             if (node) node.value = data.scriptProperties[key] || '';
@@ -122,7 +124,8 @@
           SQUARE_VERSION: document.getElementById('SQUARE_VERSION').value,
           SQUARE_CURRENCY: document.getElementById('SQUARE_CURRENCY').value,
           SQUARE_SYNC_ROOT_CATEGORY_ID: document.getElementById('SQUARE_SYNC_ROOT_CATEGORY_ID').value,
-          SQUARE_SYNC_ROOT_CATEGORY_NAME: document.getElementById('SQUARE_SYNC_ROOT_CATEGORY_NAME').value
+          SQUARE_SYNC_ROOT_CATEGORY_NAME: document.getElementById('SQUARE_SYNC_ROOT_CATEGORY_NAME').value,
+          ENABLE_SUPPORT_MENU: document.getElementById('ENABLE_SUPPORT_MENU').value
         };
 
         google.script.run
