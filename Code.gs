@@ -596,18 +596,28 @@ function addManualAttendanceRow() {
  * Adds a custom menu to the spreadsheet each time it is opened.
  */
 function onOpen(e) {
-  SpreadsheetApp.getUi()
+  const adminMenu = SpreadsheetApp.getUi()
     .createMenu('Admin')
     .addItem('Club settings', 'openClubSettingsFromMenu')
     .addItem('Square settings', 'openSquareSettingsFromMenu')
     .addItem('Show settings summary', 'showSettingsSummaryFromMenu')
     .addItem('Validate configuration', 'validateConfigurationFromMenu')
     .addSeparator()
-    .addItem('Preview Square payment sync', 'previewSquareCommercialSyncFromMenu')
-    .addItem('Sync Square payment options', 'runSquareCommercialSyncFromMenu')
-    .addItem('Check Square basket payment', 'checkBasketPaymentStatusFromMenu')
-    .addSeparator()
-    .addItem('Show Square sync settings', 'showSquareSyncSettingsFromMenu')
-    .addItem('Set Square root category', 'setSquareSyncRootCategoryNameFromMenu')
-    .addToUi();
+    .addItem('Reconcile Square basket payment', 'checkBasketPaymentStatusFromMenu');
+
+  if (isSupportMenuEnabled_()) {
+    const supportMenu = SpreadsheetApp.getUi()
+      .createMenu('Support tools')
+      .addItem('Preview Square payment sync', 'previewSquareCommercialSyncFromMenu')
+      .addItem('Sync Square payment options', 'runSquareCommercialSyncFromMenu');
+    adminMenu.addSeparator().addSubMenu(supportMenu);
+  }
+
+  adminMenu.addToUi();
+}
+
+function isSupportMenuEnabled_() {
+  return String(
+    PropertiesService.getScriptProperties().getProperty('ENABLE_SUPPORT_MENU') || ''
+  ).trim().toLowerCase() === 'true';
 }

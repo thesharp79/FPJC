@@ -1046,7 +1046,7 @@ function checkBasketPaymentStatusFromMenu() {
   const ui = SpreadsheetApp.getUi();
 
   const response = ui.prompt(
-    'Check Square basket payment',
+    'Reconcile Square basket payment',
     'Enter the Basket ID to check and reconcile if paid.',
     ui.ButtonSet.OK_CANCEL
   );

@@ -8,6 +8,11 @@ The Admin menu now provides a safer settings workflow so volunteers do not need 
 - `Square settings` - edit runtime/secret Script Properties used by Square and sheet binding
 - `Show settings summary` - show set/blank status for managed keys
 - `Validate configuration` - run operational checks for tabs, config keys, and Script Properties
+- `Reconcile Square basket payment` - support check for unresolved Square basket payment states
+
+Support-only Square tools are hidden by default and only shown when Script Property `ENABLE_SUPPORT_MENU=true`:
+- `Preview Square payment sync`
+- `Sync Square payment options`
 
 ## Club_Config keys managed in UI
 
@@ -39,5 +44,6 @@ Validation currently treats these as optional (can be blank):
 - `SQUARE_CURRENCY`
 - `SQUARE_SYNC_ROOT_CATEGORY_ID` (optional)
 - `SQUARE_SYNC_ROOT_CATEGORY_NAME` (optional)
+- `ENABLE_SUPPORT_MENU` (optional, set to `true` to show support-only Square admin tools)
 
 Secrets stay in Script Properties and are not persisted into sheet tabs.
