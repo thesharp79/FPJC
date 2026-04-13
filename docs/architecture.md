@@ -95,7 +95,7 @@ The aim is **not** to move everything at once. The aim is to extract responsibil
 | `Index.html` | keep root for now; later split into `Index.html`, `Styles.html`, `App.html` only if sync workflow remains stable |
 | `Code.gs` | keep as menu/bootstrap area or fold into `90_AdminMenus.gs` over time |
 | `NotesSync.gs` | keep separate and stable unless changing note-sync behaviour |
-| `FormRefresh.gs` | keep separate utility area |
+| `90_AdminSettings.gs` | keep separate admin settings utilities |
 
 ## Design principles
 

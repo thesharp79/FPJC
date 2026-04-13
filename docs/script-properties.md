@@ -7,8 +7,8 @@ This project relies on Apps Script **Script Properties** for environment-specifi
 | Property | Required | Purpose |
 |---|---:|---|
 | `SPREADSHEET_ID` | Yes | Target spreadsheet used by the application |
-| `MEMBERS_FORM_URL` | No | URL for the member registration form |
-| `BANNER_URL` | No | Banner image URL shown in the web app |
+| `MEMBERS_FORM_URL` | No (legacy fallback) | Fallback URL for the member registration form if `Club_Config.member_form_url` is blank |
+| `BANNER_URL` | No (legacy fallback) | Fallback banner URL if `Club_Config.banner_url` is blank |
 
 ## Square integration
 
