@@ -7,6 +7,7 @@ This document defines the **application-to-sheet contract** for FPJC runtime v1.
 - It applies to the workbook used by the running sign-in/payment application.
 - It is intentionally separate from tenant-registry design and onboarding registry work.
 - Runtime tab names and headers in this contract follow live code in `00_ProjectConfig.gs`.
+- Runtime validation resolves operational tab names from `SIGNIN_CFG.sheetNames` before applying header and per-sheet diagnostics.
 
 ## Required tabs
 

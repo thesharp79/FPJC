@@ -53,12 +53,12 @@ const SHEET_CONTRACT_V1 = {
     'Club_Config'
   ],
   requiredHeadersBySheet: {
-    Members: SHEET_CONTRACT_V1_MEMBERS_HEADERS,
-    Attendance: SHEET_CONTRACT_V1_ATTENDANCE_HEADERS,
-    PaymentOptions: Object.keys(SIGNIN_CFG.paymentOptionHeaders).map(function (key) { return SIGNIN_CFG.paymentOptionHeaders[key]; }),
-    Baskets: Object.keys(SIGNIN_CFG.basketHeaders).map(function (key) { return SIGNIN_CFG.basketHeaders[key]; }),
-    BasketLines: Object.keys(SIGNIN_CFG.basketLineHeaders).map(function (key) { return SIGNIN_CFG.basketLineHeaders[key]; }),
-    OtherPayments: Object.keys(SIGNIN_CFG.otherPaymentHeaders).map(function (key) { return SIGNIN_CFG.otherPaymentHeaders[key]; })
+    [SIGNIN_CFG.sheetNames.members]: SHEET_CONTRACT_V1_MEMBERS_HEADERS,
+    [SIGNIN_CFG.sheetNames.attendance]: SHEET_CONTRACT_V1_ATTENDANCE_HEADERS,
+    [SIGNIN_CFG.sheetNames.paymentOptions]: Object.keys(SIGNIN_CFG.paymentOptionHeaders).map(function (key) { return SIGNIN_CFG.paymentOptionHeaders[key]; }),
+    [SIGNIN_CFG.sheetNames.baskets]: Object.keys(SIGNIN_CFG.basketHeaders).map(function (key) { return SIGNIN_CFG.basketHeaders[key]; }),
+    [SIGNIN_CFG.sheetNames.basketLines]: Object.keys(SIGNIN_CFG.basketLineHeaders).map(function (key) { return SIGNIN_CFG.basketLineHeaders[key]; }),
+    [SIGNIN_CFG.sheetNames.otherPayments]: Object.keys(SIGNIN_CFG.otherPaymentHeaders).map(function (key) { return SIGNIN_CFG.otherPaymentHeaders[key]; })
   },
   requiredClubConfigColumns: ['Key', 'Value', 'Type', 'Description', 'Managed By', 'Required'],
   requiredClubConfigKeys: ['club_name', 'session_names_json', 'feature_flags_json'],
@@ -106,21 +106,21 @@ function validateSheetContractV1_(spreadsheet) {
 
     if (sheetName === SIGNIN_CFG.sheetNames.paymentOptions) {
       findDuplicateValuesInColumn_(sheet, SIGNIN_CFG.paymentOptionHeaders.code).forEach(function (value) {
-        warnings.push('Sheet "PaymentOptions" has duplicate Code value: ' + value);
+        warnings.push('Sheet "' + sheetName + '" has duplicate Code value: ' + value);
       });
     }
 
     if (sheetName === SIGNIN_CFG.sheetNames.baskets) {
       findDuplicateValuesInColumn_(sheet, SIGNIN_CFG.basketHeaders.basketId).forEach(function (value) {
-        warnings.push('Sheet "Baskets" has duplicate Basket ID value: ' + value);
+        warnings.push('Sheet "' + sheetName + '" has duplicate Basket ID value: ' + value);
       });
 
       findInvalidEnumValuesInColumn_(sheet, SIGNIN_CFG.basketHeaders.status, SHEET_CONTRACT_V1.enumValues.basketStatuses).forEach(function (value) {
-        warnings.push('Sheet "Baskets" has non-contract Status value: ' + value);
+        warnings.push('Sheet "' + sheetName + '" has non-contract Status value: ' + value);
       });
 
       findInvalidEnumValuesInColumn_(sheet, SIGNIN_CFG.basketHeaders.settlementMethod, SHEET_CONTRACT_V1.enumValues.paymentMethods).forEach(function (value) {
-        warnings.push('Sheet "Baskets" has non-contract Settlement Method value: ' + value);
+        warnings.push('Sheet "' + sheetName + '" has non-contract Settlement Method value: ' + value);
       });
     }
   });
