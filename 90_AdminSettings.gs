@@ -26,7 +26,8 @@ const ADMIN_SCRIPT_PROPERTY_FIELDS = [
   { key: 'SQUARE_VERSION', required: true },
   { key: 'SQUARE_CURRENCY', required: true },
   { key: 'SQUARE_SYNC_ROOT_CATEGORY_ID', required: false },
-  { key: 'SQUARE_SYNC_ROOT_CATEGORY_NAME', required: false }
+  { key: 'SQUARE_SYNC_ROOT_CATEGORY_NAME', required: false },
+  { key: 'ENABLE_SUPPORT_MENU', required: false }
 ];
 
 const ADMIN_REQUIRED_SHEETS = [
