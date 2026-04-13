@@ -2,109 +2,120 @@
 
 ## Objective
 
-Provide a maintainable structure for the FPJC sign-in application so changes can be made safely through GitHub and Codex, while Apps Script remains the runtime platform.
+Document the FPJC runtime architecture as it exists today, and the agreed direction for product evolution.
 
-## Runtime architecture
+## Current platform shape
 
-### Platform components
+- **Runtime host:** Google Apps Script web app
+- **Operational data store:** Google Sheets
+- **Payments platform:** Square
+- **Engineering source of truth:** GitHub
 
-- **Apps Script Web App** provides the sign-in user experience
-- **Google Sheets** holds members, attendance, baskets, payment options and payment records
-- **Script Properties** hold environment and integration configuration
-- **Square** provides catalogue data, payment links and payment reconciliation
+## Current runtime layers
 
-## Current shape
+The runtime has been split into focused root-level files.
 
-### UI
-
-- `Index.html` contains markup, styles and client-side JavaScript in one file
-
-### Server-side application
-
-- `SignInApp.gs` currently mixes:
-  - configuration
-  - utility functions
-  - member lookup
-  - basket lifecycle
-  - payment option selection
-  - attendance posting
-  - cache management
-  - payment resolution
-  - housekeeping and admin helpers
-
-### Integration
-
-- `Square.gs` currently mixes:
-  - Square config
-  - raw API client behaviour
-  - catalogue sync logic
-  - basket payment link creation
-  - payment status reconciliation
-
-### Spreadsheet operations
-
-- Spreadsheet access is currently spread across multiple files and is partly embedded inside service logic.
-
-## Target module boundaries
-
-The aim is **not** to move everything at once. The aim is to extract responsibilities gradually into focused files.
-
-### Suggested future runtime split
-
-#### `00_*` Shared config and bootstrap
+### 1) Bootstrap and configuration
 - `00_ProjectConfig.gs`
-- `01_RuntimeGuards.gs`
+- `01_RuntimeState.gs`
 
-#### `10_*` App entry points and orchestration
-- `10_SignInApi.gs`
-- `11_AppInitialState.gs`
+Responsibilities:
+- shared configuration reads
+- runtime-level state and guards
+- environment-aware defaults
 
-#### `20_*` Sheet repositories and shared spreadsheet helpers
+### 2) Shared sheet/runtime helpers
 - `20_SheetsShared.gs`
+
+Responsibilities:
+- common spreadsheet access and helpers used across repositories/services
+
+### 3) Repository layer
 - `21_MembersRepository.gs`
-- `22_AttendanceRepository.gs`
-- `23_BasketsRepository.gs`
+- `22_BasketsRepository.gs`
+- `23_BasketLinesRepository.gs`
 - `24_PaymentOptionsRepository.gs`
-- `25_OtherPaymentsRepository.gs`
 
-#### `30_*` Domain services
-- `30_MemberLookupService.gs`
-- `31_BasketService.gs`
-- `32_AttendancePostingService.gs`
-- `33_PaymentOptionService.gs`
-- `34_CacheService.gs`
+Responsibilities:
+- tab-level read/write operations
+- sheet schema/header contract handling
+- persistence boundaries separated from business decisions
 
-#### `40_*` Square and payment services
-- `40_SquareConfig.gs`
-- `41_SquareClient.gs`
-- `42_SquareCatalogSync.gs`
-- `43_SquareCheckout.gs`
-- `44_PaymentResolutionService.gs`
+### 4) Service layer
+- `30_BasketService.gs`
+- `31_BasketViewService.gs`
+- `33_AttendancePostingService.gs`
+- `34_PaymentResolutionService.gs`
+- `35_DomainHelpers.gs`
 
-#### `90_*` Admin and test utilities
-- `90_AdminMenus.gs`
-- `91_AdminCacheTools.gs`
-- `95_TestHarness.gs`
+Responsibilities:
+- basket lifecycle and totals
+- basket presentation shaping
+- attendance posting and settlement flow
+- payment resolution decisions
+- domain-level helpers
 
-## Current-to-target mapping
+### 5) Admin/settings and host integration
+- `Code.gs`
+- `90_AdminSettings.gs`
+- `AdminSettings.html`
 
-| Current file | Main future responsibility split |
-|---|---|
-| `SignInApp.gs` | `00_*`, `10_*`, `20_*`, `30_*`, `44_PaymentResolutionService.gs`, `91_AdminCacheTools.gs` |
-| `Square.gs` | `40_SquareConfig.gs`, `41_SquareClient.gs`, `42_SquareCatalogSync.gs`, `43_SquareCheckout.gs` |
-| `Index.html` | keep root for now; later split into `Index.html`, `Styles.html`, `App.html` only if sync workflow remains stable |
-| `Code.gs` | keep as menu/bootstrap area or fold into `90_AdminMenus.gs` over time |
-| `NotesSync.gs` | keep separate and stable unless changing note-sync behaviour |
-| `90_AdminSettings.gs` | keep separate admin settings utilities |
+Responsibilities:
+- spreadsheet custom menu wiring
+- admin settings dialogs and persistence helpers
+- configuration validation/summaries
+- support tool gating via `ENABLE_SUPPORT_MENU`
 
-## Design principles
+### 6) Remaining integration/runtime files
+- `Square.gs`
+- `NotesSync.gs`
+- `SignInApp.gs` (legacy compatibility surface for remaining paths)
+- `Index.html`
+- `Webhook.gs`
 
-- Keep spreadsheet header names as explicit contracts.
-- Separate **sheet persistence** from **business logic**.
-- Separate **Square raw API calls** from **payment business rules**.
-- Keep **admin utilities** isolated from core user journey code.
-- Minimise behavioural change during structural refactors.
+## Configuration model (current)
 
-## Immediate priority
+### Club-facing configuration
+Stored in the club spreadsheet `Club_Config` sheet (for example `club_name`, `session_names_json`, `feature_flags_json`, optional banner/member-form fields).
 
-The next safe refactor should be extracting shared configuration and sheet access concerns out of `SignInApp.gs`, then separating basket logic from payment resolution.
+### Runtime/secrets configuration
+Stored in Script Properties (for example `SPREADSHEET_ID`, Square credentials/environment values, support-menu toggle, and other runtime-owned keys).
+
+## Menu model (current)
+
+Top-level spreadsheet menu:
+- `Admin`
+  - `Settings`
+    - `Club settings`
+    - `Square settings`
+    - `Show settings summary`
+    - `Validate configuration`
+  - `Square`
+    - `Sync Square payment options`
+    - `Reconcile Square basket payment`
+  - optional `Support tools`
+    - `Preview Square payment sync`
+
+`Support tools` is shown only when `ENABLE_SUPPORT_MENU=true` in Script Properties.
+
+## Immediate priorities (current)
+
+1. Stabilise the admin/settings workflow and menu behaviour.
+2. Keep `Club_Config` as the club-facing settings surface.
+3. Reduce manual Script Properties setup where safe, without moving secrets into sheets.
+4. Harden validation, diagnostics, and support operations.
+5. Keep sheet schema and header contracts explicit and documented.
+
+## Product direction (agreed)
+
+- Move toward **one central runtime** serving clubs.
+- Keep **one local spreadsheet per club** for operational control.
+- Keep **club-facing configuration in the local sheet**.
+- Keep **secrets/runtime-owned values in centrally managed runtime configuration** (Script Properties in the current Apps Script phase).
+- Preserve a **migration path away from Apps Script hosting** to a future platform without breaking club sheet contracts.
+
+## What this means for change planning
+
+- The main structural file-splitting phase is largely complete.
+- Prefer operational hardening and product-architecture steps over further theoretical reshuffling.
+- Keep changes narrow, additive, and safe for live spreadsheet operations.
