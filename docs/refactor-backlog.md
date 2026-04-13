@@ -1,69 +1,22 @@
-# Refactor backlog
+# Refactor backlog (status update)
 
-## What I observed in the current codebase
+This file is retained as a lightweight status marker.
 
-### `SignInApp.gs`
-- carries too many responsibilities for safe targeted change
-- combines configuration, repositories, orchestration, domain logic, caching and admin operations
-- should be treated as the main extraction candidate
+## Current status
 
-### `Index.html`
-- contains markup, styling and client-side logic together
-- acceptable for now, but large front-end changes will become harder over time
+The major runtime split work described in older backlog notes has largely been completed in the live codebase (config/bootstrap, repositories, services, and admin/settings extraction).
 
-### `Square.gs`
-- combines low-level API calls with business flow logic
-- should eventually be split into config, client, checkout and catalogue sync areas
+## What this means
 
-## Immediate next refactor candidates
+- `SignInApp.gs` is no longer the sole monolith and now acts mainly as a compatibility surface for remaining legacy paths.
+- The immediate priority is no longer broad extraction for its own sake.
 
-### 1. Shared config extraction
-Create a new root file such as `00_ProjectConfig.gs` and move only:
-- script property access
-- common environment helpers
-- shared constant objects that are broadly reused
+## Active focus instead of old backlog items
 
-### 2. Sheet repository extraction
-Create focused files for reading and writing:
-- members
-- attendance
-- baskets
-- basket lines
-- payment options
-- other payments
+1. Operational hardening of admin/settings and configuration validation.
+2. Keeping club-facing values in `Club_Config` and runtime/secrets in Script Properties.
+3. Stabilising menu and support-tool behaviour.
+4. Preparing for product architecture steps (central runtime + per-club sheets + future host migration path).
 
-### 3. Basket service extraction
-Move basket lifecycle logic into a focused basket service area:
-- create basket
-- add member
-- add extra
-- remove member
-- remove charge
-- basket totals
-- cancel basket
-
-### 4. Payment resolution extraction
-Move these into a dedicated payment resolution file:
-- finalise sign-in
-- payment pending handling
-- mark as desk payment
-- payment resolved transitions
-- attendance payment updates
-- other payment resolution updates
-
-### 5. Square boundary hardening
-Separate:
-- raw `UrlFetchApp` interaction
-- Square payload shaping
-- FPJC business rules for checkout and reconciliation
-
-## How to refactor safely
-
-- extract one responsibility at a time
-- keep function names stable where possible
-- add thin wrappers in old files during migration
-- validate basket and payment flows after each extraction
-
-## Suggested first engineering task
-
-Create `00_ProjectConfig.gs` and move only shared script property readers and environment-level config into it. That gives Codex a clean place to add new configuration without continuing to bloat `SignInApp.gs`.
+For the canonical current summary, use:
+- `docs/current-state-and-direction.md`

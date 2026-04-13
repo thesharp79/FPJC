@@ -1,45 +1,59 @@
-# Script properties
+# Script Properties
 
-This project relies on Apps Script **Script Properties** for environment-specific configuration.
+This project uses Apps Script **Script Properties** for runtime-owned values and secrets.
 
-## Core application
+## Policy
 
-| Property | Required | Purpose |
+- Keep **club-facing settings** in `Club_Config` (for example club name, session names, feature flags, banner/member form values).
+- Keep **runtime/secrets/integration values** in Script Properties.
+- Do not move club-editable values back into Script Properties unless there is a clear runtime or secret-management reason.
+
+## Expected properties (current)
+
+### Core runtime
+
+| Property | Required | Notes |
 |---|---:|---|
-| `SPREADSHEET_ID` | Yes | Target spreadsheet used by the application |
-| `MEMBERS_FORM_URL` | No (legacy fallback) | Fallback URL for the member registration form if `Club_Config.member_form_url` is blank |
-| `BANNER_URL` | No (legacy fallback) | Fallback banner URL if `Club_Config.banner_url` is blank |
+| `SPREADSHEET_ID` | Yes | Spreadsheet binding for runtime operations. |
+| `ENABLE_SUPPORT_MENU` | No | Shows `Admin → Support tools` when set to `true`. |
 
-## Square integration
+### Square integration
 
-| Property | Required | Purpose |
+| Property | Required | Notes |
 |---|---:|---|
-| `APP_ENV` | Yes | Environment label such as `DEV` or `PROD` |
-| `SQUARE_BASE_URL` | Yes | Square API base URL |
-| `SQUARE_APPLICATION_ID` | Yes | Square application ID |
-| `SQUARE_ACCESS_TOKEN` | Yes | Square API access token |
-| `SQUARE_LOCATION_ID` | Yes | Square location ID |
-| `SQUARE_VERSION` | Yes | Square API version header value |
-| `SQUARE_CURRENCY` | No | Currency code, defaults to `GBP` |
-| `SQUARE_SYNC_ROOT_CATEGORY_ID` | No | Optional Square category ID filter for catalogue sync |
-| `SQUARE_SYNC_ROOT_CATEGORY_NAME` | No | Optional Square category name filter for catalogue sync |
+| `APP_ENV` | Yes | Runtime environment label used by Square configuration checks (for example `DEV`, `PROD`). |
+| `SQUARE_BASE_URL` | Yes | Square API base URL. |
+| `SQUARE_APPLICATION_ID` | Yes | Square application ID. |
+| `SQUARE_ACCESS_TOKEN` | Yes | Square access token (secret). |
+| `SQUARE_LOCATION_ID` | Yes | Square location ID. |
+| `SQUARE_VERSION` | Yes | Square API version header value. |
+| `SQUARE_CURRENCY` | Yes | Currency code (runtime defaults to `GBP` if blank, but set explicitly). |
+| `SQUARE_SYNC_ROOT_CATEGORY_ID` | No | Optional catalogue sync filter. |
+| `SQUARE_SYNC_ROOT_CATEGORY_NAME` | No | Optional catalogue sync filter name. |
+
+### Other integration/runtime
+
+| Property | Required | Notes |
+|---|---:|---|
+| `WEBHOOK_TOKEN` | Conditional | Required when using `Webhook.gs` endpoint protection. |
+
+## Temporary fallback properties
+
+These are legacy fallbacks and should be treated as transitional:
+
+| Property | Status | Fallback behaviour |
+|---|---|---|
+| `MEMBERS_FORM_URL` | Legacy fallback | Used only when `Club_Config.member_form_url` is blank. |
+| `BANNER_URL` | Legacy fallback | Used only when `Club_Config.banner_url` is blank. |
+
+Preferred source for these values is `Club_Config`.
+
+## Admin UI coverage
+
+The Admin Settings UI currently manages most runtime properties used day-to-day, but **`APP_ENV`** and **`WEBHOOK_TOKEN`** are not currently exposed there and may still require direct Script Properties management.
 
 ## Environment guidance
 
-Use different property values for DEV and production deployments.
-
-### DEV
-- Use a DEV spreadsheet copy
-- Use Square sandbox or DEV-aligned credentials
-- Use DEV deployment URL where relevant
-
-### PROD
-- Use the live spreadsheet
-- Use live Square configuration only when the payment flow is validated
-- Apply changes via controlled promotion from `DEV`
-
-## Rules
-
-- Do not commit real secrets into GitHub.
-- Do not hardcode environment values into `.gs` or `.html` files.
-- Any new script property introduced in code must also be documented here and in the PR description.
+- Keep separate values for DEV and production runtimes.
+- Never commit secrets to GitHub.
+- Document any newly introduced property in this file and in the PR notes.

@@ -1,68 +1,67 @@
 # FPJC
 
-Fleming Park Judo Club sign-in and payment application built on Google Apps Script, backed by Google Sheets and Square.
+Fleming Park Judo Club sign-in and payment application built on Google Apps Script, with Google Sheets as the operational store and Square as the payment platform.
 
-## Working model
+## Working model (current)
 
-- **GitHub is the engineering source of truth**
-- **Google Apps Script is the runtime and deployment layer**
-- **Google Sheets is the operational data store**
-- **Square is the payment platform**
-- **DEV** is the active integration branch for ongoing work
-- **main** should stay release-oriented
+- **GitHub** is the engineering source of truth.
+- **Google Apps Script** is the current runtime and deployment layer.
+- **Google Sheets** is the club operational data store.
+- **Square** is the current payment platform.
+- **DEV** is the integration branch for active work.
 
-## Important constraint
+For the best concise snapshot of where the project is now and where it is going, read:
+- `docs/current-state-and-direction.md`
 
-This repository is currently being synchronised with Apps Script via a GitHub sync extension rather than `clasp`.
-Because of that, executable Apps Script files are intentionally kept **flat at repo root** unless the sync tool is proven to support nested runtime files safely.
+## Runtime structure (current)
 
-## Current runtime files
+The original monolithic runtime has now largely been split into focused root-level files.
 
-- `appsscript.json` - Apps Script manifest
-- `Index.html` - current web app UI
-- `SignInApp.gs` - current sign-in, basket, cache and payment-resolution logic
-- `Square.gs` - Square API client, catalogue sync and payment link logic
-- `NotesSync.gs` - notes synchronisation behaviour
-- `Code.gs` - spreadsheet menu / admin entry points and shared spreadsheet helpers
-- `90_AdminSettings.gs` - admin settings UI actions and configuration helpers
+### Bootstrap and configuration
+- `00_ProjectConfig.gs`
+- `01_RuntimeState.gs`
 
-## Repo structure
+### Shared sheet/runtime helpers
+- `20_SheetsShared.gs`
 
-```text
-.
-├─ .github/
-│  └─ pull_request_template.md
-├─ docs/
-│  ├─ architecture.md
-│  ├─ admin-settings.md
-│  ├─ change-workflow.md
-│  ├─ refactor-backlog.md
-│  └─ script-properties.md
-├─ AGENTS.md
-├─ README.md
-├─ appsscript.json
-├─ Code.gs
-├─ Index.html
-├─ NotesSync.gs
-├─ AdminSettings.html
-├─ 90_AdminSettings.gs
-├─ SignInApp.gs
-└─ Square.gs
-```
+### Repository layer
+- `21_MembersRepository.gs`
+- `22_BasketsRepository.gs`
+- `23_BasketLinesRepository.gs`
+- `24_PaymentOptionsRepository.gs`
 
-## Target direction for runtime code
+### Service layer
+- `30_BasketService.gs`
+- `31_BasketViewService.gs`
+- `33_AttendancePostingService.gs`
+- `34_PaymentResolutionService.gs`
+- `35_DomainHelpers.gs`
 
-New runtime code should gradually move toward **small, purpose-specific root files** using numeric prefixes so Apps Script load order stays obvious and Codex can make narrow changes safely.
+### Admin / spreadsheet host integration
+- `Code.gs`
+- `90_AdminSettings.gs`
+- `AdminSettings.html`
 
-Suggested pattern:
+### Other runtime files
+- `Index.html`
+- `NotesSync.gs`
+- `Square.gs`
+- `SignInApp.gs` (compatibility surface still present for remaining legacy paths)
+- `Webhook.gs`
+- `appsscript.json`
 
-- `00_*` shared config and bootstrap
-- `10_*` app entry points and orchestration
-- `20_*` sheet access and repositories
-- `30_*` member / attendance / basket services
-- `40_*` payment and Square services
-- `90_*` admin, cache reset and test helpers
+## Repository notes
 
-## Delivery rule of thumb
+- Runtime Apps Script files are kept **flat at repository root** for sync-tool safety.
+- New project documentation should go under `docs/`.
+- Avoid hardcoding environment values or secrets in source; use Script Properties where runtime or secret ownership is required.
 
-Do not do large-scale renames or moves in one pass. Prefer controlled extraction from the current larger files into new, clearly named files, keeping the live behaviour stable while the structure improves.
+## Direction of travel
+
+The agreed product direction is:
+
+- **central runtime**
+- **one local spreadsheet per club**
+- **club-facing configuration in each club sheet (`Club_Config`)**
+- **runtime/secrets in Script Properties for the current Apps Script phase**
+- **a migration path away from Apps Script hosting later, without breaking the local-sheet tenant model**
