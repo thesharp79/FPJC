@@ -78,7 +78,17 @@ function openAdminSettingsDialog_(mode) {
 }
 
 function getAdminSettingsData(mode) {
-  const clubConfig = readClubConfigValues_(ADMIN_CLUB_CONFIG_KEYS);
+  const currentMode = mode || 'club';
+  let clubConfig = {};
+  let clubConfigLoadError = '';
+
+  try {
+    clubConfig = readClubConfigValues_(ADMIN_CLUB_CONFIG_KEYS);
+  } catch (err) {
+    if (currentMode !== 'square') throw err;
+    clubConfigLoadError = String(err && err.message ? err.message : err);
+  }
+
   const props = PropertiesService.getScriptProperties();
   const scriptProps = {};
 
@@ -86,12 +96,21 @@ function getAdminSettingsData(mode) {
     scriptProps[field.key] = String(props.getProperty(field.key) || '').trim();
   });
 
+  let summary = '';
+  try {
+    summary = getSettingsSummary_();
+  } catch (err) {
+    if (currentMode !== 'square') throw err;
+    summary = 'Settings summary unavailable: ' + String(err && err.message ? err.message : err);
+  }
+
   return {
-    mode: mode || 'club',
+    mode: currentMode,
     clubConfig: clubConfig,
+    clubConfigLoadError: clubConfigLoadError,
     scriptProperties: scriptProps,
     scriptPropertyFields: ADMIN_SCRIPT_PROPERTY_FIELDS,
-    summary: getSettingsSummary_(),
+    summary: summary,
     validation: validateConfigurationNow_()
   };
 }

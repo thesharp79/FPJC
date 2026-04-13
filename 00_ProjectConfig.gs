@@ -154,7 +154,8 @@ function getOptionalScriptProperty_(propertyName) {
 function getClubConfigValueOrFallback_(configKey, fallbackPropertyName) {
   const config = getClubConfigMapCached_();
   if (Object.prototype.hasOwnProperty.call(config, configKey)) {
-    return String(config[configKey] || '').trim();
+    const configValue = String(config[configKey] || '').trim();
+    if (configValue) return configValue;
   }
   return fallbackPropertyName ? getOptionalScriptProperty_(fallbackPropertyName) : '';
 }
