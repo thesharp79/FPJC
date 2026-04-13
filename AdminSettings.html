@@ -80,10 +80,12 @@
           });
         }
 
-        const val = data.validation || { ok: false, errors: [], warnings: [] };
+        const val = data.validation || { ok: false, errors: [], warnings: [], checkedAt: '', schemaVersion: '' };
         setStatus(
           (val.ok ? 'Validation: OK' : 'Validation: issues found') +
-            (val.errors.length ? '\nErrors: ' + val.errors.join('; ') : '') +
+            (val.checkedAt ? '\nChecked at: ' + val.checkedAt : '') +
+            ('\nSchema version: ' + (val.schemaVersion || '(not set)')) +
+            (val.errors.length ? '\nBlocking errors: ' + val.errors.join('; ') : '') +
             (val.warnings.length ? '\nWarnings: ' + val.warnings.join('; ') : ''),
           !val.ok
         );
@@ -141,7 +143,9 @@
         google.script.run
           .withSuccessHandler((result) => {
             const msg = (result.ok ? 'Validation: OK' : 'Validation: issues found') +
-              (result.errors.length ? '\nErrors: ' + result.errors.join('; ') : '') +
+              (result.checkedAt ? '\nChecked at: ' + result.checkedAt : '') +
+              ('\nSchema version: ' + (result.schemaVersion || '(not set)')) +
+              (result.errors.length ? '\nBlocking errors: ' + result.errors.join('; ') : '') +
               (result.warnings.length ? '\nWarnings: ' + result.warnings.join('; ') : '');
             setStatus(msg, !result.ok);
           })

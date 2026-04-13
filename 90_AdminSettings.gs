@@ -30,16 +30,6 @@ const ADMIN_SCRIPT_PROPERTY_FIELDS = [
   { key: 'ENABLE_SUPPORT_MENU', required: false }
 ];
 
-const ADMIN_REQUIRED_SHEETS = [
-  'Members',
-  'Attendance',
-  'PaymentOptions',
-  'Baskets',
-  'BasketLines',
-  'OtherPayments',
-  'Club_Config'
-];
-
 function openClubSettingsFromMenu() {
   openAdminSettingsDialog_('club');
 }
@@ -57,9 +47,11 @@ function validateConfigurationFromMenu() {
   const result = validateConfigurationNow_();
   const lines = [];
   lines.push(result.ok ? 'Configuration looks good.' : 'Configuration has issues.');
+  lines.push('Checked at: ' + result.checkedAt);
+  lines.push('Schema version: ' + (result.schemaVersion || '(not set)'));
   if (result.errors.length) {
     lines.push('');
-    lines.push('Errors:');
+    lines.push('Blocking errors:');
     result.errors.forEach(function (error) { lines.push('- ' + error); });
   }
   if (result.warnings.length) {
@@ -280,26 +272,18 @@ function validateConfigurationNow_() {
     ss = SpreadsheetApp.openById(getCurrentSpreadsheetIdForAdmin_());
   } catch (err) {
     errors.push('Unable to open spreadsheet from SPREADSHEET_ID. ' + err.message);
-    return { ok: false, errors: errors, warnings: warnings };
+    return {
+      ok: false,
+      errors: errors,
+      warnings: warnings,
+      checkedAt: new Date().toISOString(),
+      schemaVersion: ''
+    };
   }
 
-  ADMIN_REQUIRED_SHEETS.forEach(function (name) {
-    if (!ss.getSheetByName(name)) errors.push('Missing required sheet: ' + name);
-  });
-
-  const clubSheet = ss.getSheetByName('Club_Config');
-  if (clubSheet) {
-    try {
-      const config = readClubConfigMapWithRowIndex_(clubSheet).config;
-      ADMIN_CLUB_CONFIG_REQUIRED_KEYS.forEach(function (key) {
-        if (!String(config[key] || '').trim()) {
-          errors.push('Missing required Club_Config key: ' + key);
-        }
-      });
-    } catch (err) {
-      errors.push('Club_Config validation failed: ' + err.message);
-    }
-  }
+  const contractResult = validateSheetContractV1_(ss);
+  errors.push.apply(errors, contractResult.errors);
+  warnings.push.apply(warnings, contractResult.warnings);
 
   const props = PropertiesService.getScriptProperties();
   ADMIN_SCRIPT_PROPERTY_FIELDS.forEach(function (field) {
@@ -314,5 +298,11 @@ function validateConfigurationNow_() {
     warnings.push('Square sync root category is optional but currently unset.');
   }
 
-  return { ok: errors.length === 0, errors: errors, warnings: warnings };
+  return {
+    ok: errors.length === 0,
+    errors: errors,
+    warnings: warnings,
+    checkedAt: contractResult.checkedAt,
+    schemaVersion: contractResult.schemaVersion
+  };
 }
