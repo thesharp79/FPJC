@@ -1,6 +1,7 @@
 const SIGNIN_CFG = {
   spreadsheetId: getScriptPropertyRequired_('SPREADSHEET_ID'),
   membersFormUrl: getOptionalScriptProperty_('MEMBERS_FORM_URL'),
+  bannerUrl: getOptionalScriptProperty_('BANNER_URL'),
   timezone: Session.getScriptTimeZone() || 'Europe/London',
 
   sheetNames: {
@@ -151,12 +152,14 @@ function doGet(e) {
     basketId: String(params.basketId || '').trim()
   });
   template.MEMBERS_FORM_URL_JSON = JSON.stringify(SIGNIN_CFG.membersFormUrl || '');
+  template.BANNER_URL = SIGNIN_CFG.bannerUrl || '';
 
   return template
     .evaluate()
     .setTitle('Judo Sign-In')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
+
 
 
 
@@ -3310,5 +3313,4 @@ function resolveBasketPaymentCard(basketId) {
     ''
   );
 }
-
 
