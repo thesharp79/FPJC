@@ -24,17 +24,42 @@ The workbook must contain these tabs:
 
 ### `Members`
 
+For `Members`, the current runtime still depends on the broader legacy form-submit/upsert schema.
+These headers are required for v1 and are order-sensitive in live validation paths.
+
+- `TimeStamp`
 - `Status`
+- `Concessionary`
+- `DD Start Date`
+- `PrePay Remaining`
+- `Session Name`
+- `First Name`
+- `Last Name`
+- `Last Session`
 - `Full Name`
 - `Date of Birth`
-- `Session Name`
+- `Contact email address`
+- `Address`
 - `British Judo Association (BJA) License number`
-- `DD Start Date`
-- `Concessionary`
-- `PrePay Remaining`
+- `BJA License expiry date`
+- `Medical conditions / learning difficulties`
+- `First Aid`
+- `Email contact`
+- `Photographs and videos`
+- `Gradings / Records of success`
+- `Contact 1 - Name`
+- `Contact 1 - Telephone Number`
+- `Contact 1 - Relationship to member`
+- `Contact 2 - Name`
+- `Contact 2 - Telephone Number`
+- `Contact 2 - Relationship to member`
+- `Data storage`
+- `How did you hear about Fleming Park Judo Club`
 - `Notes`
 
 ### `Attendance`
+
+`Attendance` headers are also order-sensitive in legacy runtime validation paths.
 
 - `Timestamp`
 - `Session Date`
@@ -184,6 +209,8 @@ The workbook must contain these tabs:
 ## Runtime validation behaviour
 
 Validation reports:
+
+For `Members` and `Attendance`, validation checks both presence and leading-column header order to match current live dependencies.
 
 - `errors`: blocking contract failures
 - `warnings`: non-blocking but operationally important findings

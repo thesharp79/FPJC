@@ -4,6 +4,42 @@
  * This contract covers the runtime workbook schema only.
  * It does not include tenant-registry concerns.
  */
+const SHEET_CONTRACT_V1_MEMBERS_HEADERS = [
+  'TimeStamp',
+  'Status',
+  'Concessionary',
+  'DD Start Date',
+  'PrePay Remaining',
+  'Session Name',
+  'First Name',
+  'Last Name',
+  'Last Session',
+  'Full Name',
+  'Date of Birth',
+  'Contact email address',
+  'Address',
+  'British Judo Association (BJA) License number',
+  'BJA License expiry date',
+  'Medical conditions / learning difficulties',
+  'First Aid',
+  'Email contact',
+  'Photographs and videos',
+  'Gradings / Records of success',
+  'Contact 1 - Name',
+  'Contact 1 - Telephone Number',
+  'Contact 1 - Relationship to member',
+  'Contact 2 - Name',
+  'Contact 2 - Telephone Number',
+  'Contact 2 - Relationship to member',
+  'Data storage',
+  'How did you hear about Fleming Park Judo Club',
+  'Notes'
+];
+
+const SHEET_CONTRACT_V1_ATTENDANCE_HEADERS = Object.keys(SIGNIN_CFG.attendanceHeaders).map(function (key) {
+  return SIGNIN_CFG.attendanceHeaders[key];
+});
+
 const SHEET_CONTRACT_V1 = {
   version: 'v1',
   clubConfigSheetName: 'Club_Config',
@@ -17,8 +53,8 @@ const SHEET_CONTRACT_V1 = {
     'Club_Config'
   ],
   requiredHeadersBySheet: {
-    Members: Object.keys(SIGNIN_CFG.membersHeaders).map(function (key) { return SIGNIN_CFG.membersHeaders[key]; }),
-    Attendance: Object.keys(SIGNIN_CFG.attendanceHeaders).map(function (key) { return SIGNIN_CFG.attendanceHeaders[key]; }),
+    Members: SHEET_CONTRACT_V1_MEMBERS_HEADERS,
+    Attendance: SHEET_CONTRACT_V1_ATTENDANCE_HEADERS,
     PaymentOptions: Object.keys(SIGNIN_CFG.paymentOptionHeaders).map(function (key) { return SIGNIN_CFG.paymentOptionHeaders[key]; }),
     Baskets: Object.keys(SIGNIN_CFG.basketHeaders).map(function (key) { return SIGNIN_CFG.basketHeaders[key]; }),
     BasketLines: Object.keys(SIGNIN_CFG.basketLineHeaders).map(function (key) { return SIGNIN_CFG.basketLineHeaders[key]; }),
@@ -58,6 +94,15 @@ function validateSheetContractV1_(spreadsheet) {
     findMissingValues_(SHEET_CONTRACT_V1.requiredHeadersBySheet[sheetName], headers).forEach(function (header) {
       errors.push('Sheet "' + sheetName + '" missing required header: ' + header);
     });
+
+    if (sheetName === SIGNIN_CFG.sheetNames.members || sheetName === SIGNIN_CFG.sheetNames.attendance) {
+      const expectedHeaders = SHEET_CONTRACT_V1.requiredHeadersBySheet[sheetName];
+      const orderMismatch = findHeaderOrderMismatch_(headers, expectedHeaders);
+      if (orderMismatch) {
+        errors.push('Sheet "' + sheetName + '" header order mismatch at column ' + orderMismatch.column +
+          '. Expected "' + orderMismatch.expected + '", found "' + orderMismatch.actual + '".');
+      }
+    }
 
     if (sheetName === SIGNIN_CFG.sheetNames.paymentOptions) {
       findDuplicateValuesInColumn_(sheet, SIGNIN_CFG.paymentOptionHeaders.code).forEach(function (value) {
@@ -206,4 +251,20 @@ function findInvalidEnumValuesInColumn_(sheet, headerName, allowedValues) {
   });
 
   return Object.keys(invalid);
+}
+
+
+function findHeaderOrderMismatch_(actualHeaders, expectedHeaders) {
+  for (let i = 0; i < expectedHeaders.length; i++) {
+    const expected = String(expectedHeaders[i] || '').trim();
+    const actual = String(actualHeaders[i] || '').trim();
+    if (expected !== actual) {
+      return {
+        column: i + 1,
+        expected: expected,
+        actual: actual || '(blank)'
+      };
+    }
+  }
+  return null;
 }
