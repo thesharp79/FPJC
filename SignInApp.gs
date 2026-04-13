@@ -768,10 +768,6 @@ const STALE_BUILDING_BASKET_HOURS = 12;
 const STALE_BASKET_CLEANUP_BATCH_LIMIT = 25;
 const STALE_BASKET_CLEANUP_THROTTLE_SECONDS = 900;
 
-var SIGNIN_PERF_RUNTIME_ = {
-  attendanceByDate: {}
-};
-
 function perfNow_() {
   return Date.now();
 }
@@ -1363,13 +1359,6 @@ function prewarmSession(sessionDateIso) {
    - lighter basket row updates
    - keeps profiling branch behaviour unchanged
 \============================== */
-
-if (!SIGNIN_PERF_RUNTIME_.basketLinesById) {
-  SIGNIN_PERF_RUNTIME_.basketLinesById = {};
-}
-if (!SIGNIN_PERF_RUNTIME_.basketSummaryById) {
-  SIGNIN_PERF_RUNTIME_.basketSummaryById = {};
-}
 
 function getBasketLinesCacheKey_(basketId) {
   return 'signin_basket_lines_' + basketId;
