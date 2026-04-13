@@ -5,11 +5,11 @@
  */
 const SIGNIN_CFG = {
   spreadsheetId: getScriptPropertyRequired_('SPREADSHEET_ID'),
-  membersFormUrl: getClubConfigValueOrFallback_('member_form_url', 'MEMBERS_FORM_URL'),
-  bannerUrl: getClubConfigValueOrFallback_('banner_url', 'BANNER_URL'),
-  clubName: getClubConfigValueOrFallback_('club_name', ''),
-  sessionNamesJson: getClubConfigValueOrFallback_('session_names_json', ''),
-  featureFlagsJson: getClubConfigValueOrFallback_('feature_flags_json', ''),
+  membersFormUrl: getOptionalScriptProperty_('MEMBERS_FORM_URL'),
+  bannerUrl: getOptionalScriptProperty_('BANNER_URL'),
+  clubName: '',
+  sessionNamesJson: '',
+  featureFlagsJson: '',
   timezone: Session.getScriptTimeZone() || 'Europe/London',
 
   sheetNames: {
@@ -152,10 +152,23 @@ function getOptionalScriptProperty_(propertyName) {
 }
 
 function getClubConfigValueOrFallback_(configKey, fallbackPropertyName) {
+  const config = getClubConfigMapCached_();
+  if (Object.prototype.hasOwnProperty.call(config, configKey)) {
+    return String(config[configKey] || '').trim();
+  }
+  return fallbackPropertyName ? getOptionalScriptProperty_(fallbackPropertyName) : '';
+}
+
+let CLUB_CONFIG_MAP_CACHE_ = null;
+
+function getClubConfigMapCached_() {
+  if (CLUB_CONFIG_MAP_CACHE_ !== null) return CLUB_CONFIG_MAP_CACHE_;
+
+  CLUB_CONFIG_MAP_CACHE_ = {};
   try {
     const ss = SpreadsheetApp.openById(getScriptPropertyRequired_('SPREADSHEET_ID'));
     const sheet = ss.getSheetByName('Club_Config');
-    if (!sheet || sheet.getLastRow() < 2) return fallbackPropertyName ? getOptionalScriptProperty_(fallbackPropertyName) : '';
+    if (!sheet || sheet.getLastRow() < 2) return CLUB_CONFIG_MAP_CACHE_;
 
     const lastCol = Math.max(sheet.getLastColumn(), 2);
     const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function (header) {
@@ -163,15 +176,16 @@ function getClubConfigValueOrFallback_(configKey, fallbackPropertyName) {
     });
     const keyCol = headers.indexOf('key');
     const valueCol = headers.indexOf('value');
-    if (keyCol === -1 || valueCol === -1) return fallbackPropertyName ? getOptionalScriptProperty_(fallbackPropertyName) : '';
+    if (keyCol === -1 || valueCol === -1) return CLUB_CONFIG_MAP_CACHE_;
 
     const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, lastCol).getValues();
     for (let i = 0; i < rows.length; i++) {
       const key = String(rows[i][keyCol] || '').trim();
-      if (key === configKey) return String(rows[i][valueCol] || '').trim();
+      if (!key) continue;
+      CLUB_CONFIG_MAP_CACHE_[key] = String(rows[i][valueCol] || '').trim();
     }
   } catch (err) {
-    console.warn('Club_Config lookup failed for key "' + configKey + '": ' + err.message);
+    console.warn('Club_Config lookup failed: ' + err.message);
   }
-  return fallbackPropertyName ? getOptionalScriptProperty_(fallbackPropertyName) : '';
+  return CLUB_CONFIG_MAP_CACHE_;
 }

@@ -4,13 +4,18 @@
  * Club-facing values are stored in Club_Config.
  * Secret/runtime values stay in Script Properties.
  */
-const ADMIN_CLUB_CONFIG_KEYS = [
+const ADMIN_CLUB_CONFIG_REQUIRED_KEYS = [
   'club_name',
-  'banner_url',
-  'member_form_url',
   'session_names_json',
   'feature_flags_json'
 ];
+
+const ADMIN_CLUB_CONFIG_OPTIONAL_KEYS = [
+  'banner_url',
+  'member_form_url',
+];
+
+const ADMIN_CLUB_CONFIG_KEYS = ADMIN_CLUB_CONFIG_REQUIRED_KEYS.concat(ADMIN_CLUB_CONFIG_OPTIONAL_KEYS);
 
 const ADMIN_SCRIPT_PROPERTY_FIELDS = [
   { key: 'SPREADSHEET_ID', required: true },
@@ -154,10 +159,16 @@ function writeClubConfigValues_(values) {
 }
 
 function getClubConfigSheetRequired_() {
-  const ss = SpreadsheetApp.openById(SIGNIN_CFG.spreadsheetId);
+  const ss = SpreadsheetApp.openById(getCurrentSpreadsheetIdForAdmin_());
   const sheet = ss.getSheetByName('Club_Config');
   if (!sheet) throw new Error('Missing required sheet "Club_Config".');
   return sheet;
+}
+
+function getCurrentSpreadsheetIdForAdmin_() {
+  const spreadsheetId = String(PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID') || '').trim();
+  if (!spreadsheetId) throw new Error('Missing required Script Property: SPREADSHEET_ID');
+  return spreadsheetId;
 }
 
 function readClubConfigMapWithRowIndex_(sheet) {
@@ -246,7 +257,7 @@ function validateConfigurationNow_() {
 
   let ss;
   try {
-    ss = SpreadsheetApp.openById(SIGNIN_CFG.spreadsheetId);
+    ss = SpreadsheetApp.openById(getCurrentSpreadsheetIdForAdmin_());
   } catch (err) {
     errors.push('Unable to open spreadsheet from SPREADSHEET_ID. ' + err.message);
     return { ok: false, errors: errors, warnings: warnings };
@@ -260,7 +271,7 @@ function validateConfigurationNow_() {
   if (clubSheet) {
     try {
       const config = readClubConfigMapWithRowIndex_(clubSheet).config;
-      ADMIN_CLUB_CONFIG_KEYS.forEach(function (key) {
+      ADMIN_CLUB_CONFIG_REQUIRED_KEYS.forEach(function (key) {
         if (!String(config[key] || '').trim()) {
           errors.push('Missing required Club_Config key: ' + key);
         }

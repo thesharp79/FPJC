@@ -19,6 +19,15 @@ The Admin menu now provides a safer settings workflow so volunteers do not need 
 
 These values are stored in the `Club_Config` sheet and should remain club-editable via admin tools (not through Script Properties).
 
+Validation currently treats these as required:
+- `club_name`
+- `session_names_json`
+- `feature_flags_json`
+
+Validation currently treats these as optional (can be blank):
+- `banner_url`
+- `member_form_url`
+
 ## Script Properties managed in UI
 
 - `SPREADSHEET_ID`
