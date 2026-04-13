@@ -598,7 +598,10 @@ function addManualAttendanceRow() {
 function onOpen(e) {
   SpreadsheetApp.getUi()
     .createMenu('Admin')
-    .addItem('Update Google Form name lists', 'runFormRefreshFromSheet')
+    .addItem('Club settings', 'openClubSettingsFromMenu')
+    .addItem('Square settings', 'openSquareSettingsFromMenu')
+    .addItem('Show settings summary', 'showSettingsSummaryFromMenu')
+    .addItem('Validate configuration', 'validateConfigurationFromMenu')
     .addSeparator()
     .addItem('Preview Square payment sync', 'previewSquareCommercialSyncFromMenu')
     .addItem('Sync Square payment options', 'runSquareCommercialSyncFromMenu')
@@ -608,35 +611,3 @@ function onOpen(e) {
     .addItem('Set Square root category', 'setSquareSyncRootCategoryNameFromMenu')
     .addToUi();
 }
-
-
-/**
- * Wrapper that runs the Form refresh and shows a user-friendly result.
- */
-function runFormRefreshFromSheet() {
-  const ui = SpreadsheetApp.getUi();
-  try {
-    ui.alert('Updating…', 'Refreshing Google Form name lists. Please wait.', ui.ButtonSet.OK);
-
-
-    buildOrRefreshForm();
-
-
-    ui.alert('Done', 'Google Form name lists have been refreshed successfully.', ui.ButtonSet.OK);
-  } catch (err) {
-    console.error(err);
-
-
-    ui.alert(
-      'Update failed',
-      'The refresh did not complete.\n\n' +
-      'What to do:\n' +
-      '1) Check you are signed into the correct Google account.\n' +
-      '2) Check the "Calc" tab headers are unchanged.\n' +
-      '3) If it still fails, share this message with the admin:\n\n' +
-      String(err && err.message ? err.message : err),
-      ui.ButtonSet.OK
-    );
-  }
-}
-

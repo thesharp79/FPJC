@@ -23,8 +23,8 @@ Because of that, executable Apps Script files are intentionally kept **flat at r
 - `SignInApp.gs` - current sign-in, basket, cache and payment-resolution logic
 - `Square.gs` - Square API client, catalogue sync and payment link logic
 - `NotesSync.gs` - notes synchronisation behaviour
-- `FormRefresh.gs` - form refresh utilities
 - `Code.gs` - spreadsheet menu / admin entry points and shared spreadsheet helpers
+- `90_AdminSettings.gs` - admin settings UI actions and configuration helpers
 
 ## Repo structure
 
@@ -34,6 +34,7 @@ Because of that, executable Apps Script files are intentionally kept **flat at r
 │  └─ pull_request_template.md
 ├─ docs/
 │  ├─ architecture.md
+│  ├─ admin-settings.md
 │  ├─ change-workflow.md
 │  ├─ refactor-backlog.md
 │  └─ script-properties.md
@@ -41,9 +42,10 @@ Because of that, executable Apps Script files are intentionally kept **flat at r
 ├─ README.md
 ├─ appsscript.json
 ├─ Code.gs
-├─ FormRefresh.gs
 ├─ Index.html
 ├─ NotesSync.gs
+├─ AdminSettings.html
+├─ 90_AdminSettings.gs
 ├─ SignInApp.gs
 └─ Square.gs
 ```
