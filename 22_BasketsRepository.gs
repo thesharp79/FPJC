@@ -2,10 +2,6 @@
    Basket record persistence repository
 \============================== */
 
-if (!SIGNIN_PERF_RUNTIME_.basketById) {
-  SIGNIN_PERF_RUNTIME_.basketById = {};
-}
-
 function getBasketRecordCacheKey_(basketId) {
   return 'signin_basket_v1_' + basketId;
 }
