@@ -48,6 +48,16 @@ Top-level custom menu in the spreadsheet:
     - `Reconcile Square basket payment`
   - optional `Support tools`
     - `Preview Square payment sync`
+    - `Clear sign-in caches`
+
+
+## Support cache reset action
+
+When `ENABLE_SUPPORT_MENU=true`, support users can run **Admin → Support tools → Clear sign-in caches**.
+
+- Prompts for session date (`YYYY-MM-DD`) and optional Basket ID.
+- Reuses `adminClearSignInCaches(sessionDateIso, basketId)` to clear date-scoped and optional basket-scoped sign-in caches.
+- Useful after manually deleting `Attendance` rows during repeated testing, so duplicate-check cache state can be reset immediately.
 
 ## `ENABLE_SUPPORT_MENU`
 
