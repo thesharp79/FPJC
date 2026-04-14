@@ -195,11 +195,13 @@ function updateBasketTotalsFromLines_(basketRowNumber, lines) {
   const sheet = getBasketsSheet_();
   const meta = getHeaderMeta_(sheet);
   const idx = meta.headerMap;
-  const startIdx = requireHeader_(idx, SIGNIN_CFG.basketHeaders.status);
-  const endIdx = requireHeader_(idx, SIGNIN_CFG.basketHeaders.memberCount);
+  const statusCol = requireHeader_(idx, SIGNIN_CFG.basketHeaders.status) + 1;
+  const totalCol = requireHeader_(idx, SIGNIN_CFG.basketHeaders.totalAmount) + 1;
+  const memberCountCol = requireHeader_(idx, SIGNIN_CFG.basketHeaders.memberCount) + 1;
 
-  sheet.getRange(basketRowNumber, startIdx + 1, 1, endIdx - startIdx + 1)
-    .setValues([[summary.status, summary.totalAmount, summary.memberCount]]);
+  sheet.getRange(basketRowNumber, statusCol).setValue(summary.status);
+  sheet.getRange(basketRowNumber, totalCol).setValue(summary.totalAmount);
+  sheet.getRange(basketRowNumber, memberCountCol).setValue(summary.memberCount);
   invalidateSheetRuntimeCache_(sheet);
   updateBasketRecordCacheByRow_(basketRowNumber, {
     Status: summary.status
