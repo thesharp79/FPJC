@@ -496,7 +496,7 @@
 
       function openPaymentLink(url) {
         if (!url) return;
-        window.open(url, '_blank', 'noopener');
+        window.location.assign(url);
       }
 
 
