@@ -496,6 +496,16 @@
 
       function openPaymentLink(url) {
         if (!url) return;
+
+        try {
+          if (window.top && window.top !== window) {
+            window.top.location.assign(url);
+            return;
+          }
+        } catch (e) {
+          // ignore and fall back
+        }
+
         window.location.assign(url);
       }
 
