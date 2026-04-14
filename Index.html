@@ -378,18 +378,18 @@
             <input id="sessionDate" type="date">
           </div>
           <div>
-            <label for="dob">Player date of birth</label>
+            <label for="dob">Member date of birth</label>
             <input id="dob" type="date">
           </div>
         </div>
 
 
-        <button class="primary full" onclick="lookupMembers()">Find player</button>
+        <button class="primary full" onclick="lookupMembers()">Find member</button>
         <div id="lookupMsg" class="msg hidden"></div>
 
 
         <div id="choicesWrap" class="hidden">
-          <h2 style="margin-top:16px;">Select player</h2>
+          <h2 style="margin-top:16px;">Select member</h2>
           <div id="choices"></div>
         </div>
       </div>
@@ -653,7 +653,7 @@
 
 
         const perf = clientPerfStart('lookupMembers', { dob, sessionDate });
-        setBusy(true, 'Finding player…');
+        setBusy(true, 'Finding member…');
         clientPerfLog(perf, 'before google.script.run');
 
 
@@ -748,7 +748,7 @@
         });
 
 
-        setBusy(true, 'Adding player to basket…');
+        setBusy(true, 'Adding member to basket…');
         clientPerfLog(perf, 'before google.script.run');
 
 
