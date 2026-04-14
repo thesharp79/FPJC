@@ -1,5 +1,7 @@
 /* Attendance posting and sign-in completion helpers extracted from SignInApp.gs. */
 
+const ATTENDANCE_DATE_CACHE_TTL_SECONDS = 900;
+
 function appendOtherPaymentRow_(sheet, record) {
   appendSheetRowByHeaders_(sheet, [
     'Timestamp',
@@ -240,7 +242,7 @@ function getAttendanceSignedInSetForDate_(sessionDateIso) {
   SIGNIN_PERF_RUNTIME_.attendanceByDate[sessionDateIso] = set;
   t = perfNow_();
   try {
-    CacheService.getScriptCache().put(cacheKey, JSON.stringify(set), 120);
+    CacheService.getScriptCache().put(cacheKey, JSON.stringify(set), ATTENDANCE_DATE_CACHE_TTL_SECONDS);
     perfLog_('alreadySignedIn_', 'script cache write', t, 'date=' + sessionDateIso + ' size=' + Object.keys(set).length);
   } catch (e) {
     perfLog_('alreadySignedIn_', 'script cache write failed', t, 'date=' + sessionDateIso + ' err=' + String(e));
@@ -288,7 +290,7 @@ function putAttendanceSignedInSetForDate_(sessionDateIso, setObj) {
     CacheService.getScriptCache().put(
       'signin_attendance_date_' + sessionDateIso,
       JSON.stringify(SIGNIN_PERF_RUNTIME_.attendanceByDate[sessionDateIso]),
-      120
+      ATTENDANCE_DATE_CACHE_TTL_SECONDS
     );
   } catch (e) {
     // Ignore cache write failures during normal flow.
@@ -425,8 +427,8 @@ function finaliseBasketDesk(basketId, paymentMethod) {
 
   t = perfNow_();
   const basketLinesSheet = getBasketLinesSheet_();
-  const basketLinesPayload = getSheetPayload_(basketLinesSheet);
-  const basketLinesIdx = basketLinesPayload.headerMap;
+  const basketLinesMeta = getHeaderMeta_(basketLinesSheet);
+  const basketLinesIdx = basketLinesMeta.headerMap;
   const basketLineRows = getBasketLineRows_(basketId);
   perfLog_(perfScope, 'getBasketLineRows_', t, 'basketId=' + basketId + ' lines=' + basketLineRows.length);
 
@@ -674,7 +676,7 @@ function liveAttendanceHasMemberOnDate_(fullName, sessionDateIso) {
 function writeAttendanceDateCache_(sessionDateIso, set) {
   SIGNIN_PERF_RUNTIME_.attendanceByDate[sessionDateIso] = set;
   try {
-    CacheService.getScriptCache().put('signin_attendance_date_' + sessionDateIso, JSON.stringify(set), 120);
+    CacheService.getScriptCache().put('signin_attendance_date_' + sessionDateIso, JSON.stringify(set), ATTENDANCE_DATE_CACHE_TTL_SECONDS);
   } catch (e) {}
 }
 
