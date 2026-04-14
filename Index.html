@@ -102,6 +102,16 @@
         color: #fff;
       }
 
+      .pay-link {
+        display: block;
+        padding: 14px 16px;
+        min-height: 54px;
+        border-radius: 10px;
+        text-align: center;
+        text-decoration: none;
+        line-height: 1.3;
+      }
+
       .secondary {
         background: #f0f0f0;
         color: #222;
@@ -494,22 +504,6 @@
       }
 
 
-      function openPaymentLink(url) {
-        if (!url) return;
-
-        try {
-          if (window.top && window.top !== window) {
-            window.top.location.assign(url);
-            return;
-          }
-        } catch (e) {
-          // ignore and fall back
-        }
-
-        window.location.assign(url);
-      }
-
-
       function chooseDeskPayment(basketId) {
         if (!basketId) {
           clearPaymentUi();
@@ -551,7 +545,7 @@
 
 
         html += '<div class="actions stack">';
-        html += '<button class="primary full" onclick="openPaymentLink(\'' + escapeJs(payment.paymentLinkUrl || '') + '\')">Pay online</button>';
+        html += '<a class="primary full pay-link" href="' + escapeHtml(payment.paymentLinkUrl || '') + '" target="_top" rel="noopener">Pay online</a>';
         html += '<button class="secondary full" onclick="chooseDeskPayment(\'' + escapeJs(payment.basketId || '') + '\')">Pay at Desk</button>';
         html += '</div>';
 
