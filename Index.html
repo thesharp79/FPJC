@@ -603,6 +603,7 @@
         }
 
 
+        setSignInCardVisible(false);
         clearAllMessages();
         clearBasketUi();
         resetChoiceArea();
@@ -616,6 +617,7 @@
           })
           .withFailureHandler(err => {
             setBusy(false);
+            setSignInCardVisible(true);
             showMessage(
               'lookupMsg',
               err && err.message ? err.message : 'Could not check payment status.',
