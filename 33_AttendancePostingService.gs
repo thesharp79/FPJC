@@ -137,12 +137,16 @@ function prewarmAttendanceDateCache_(sessionDateIso) {
 
 function findMembersByDob(dobIso, sessionDateIso) {
   const t0 = perfNow_();
+  const perfScope = withPerfRequestScope_('findMembersByDob', newPerfRequestId_());
   assertIsoDate_(dobIso, 'Date of birth');
   if (sessionDateIso) assertIsoDate_(sessionDateIso, 'Session date');
 
+  let t = perfNow_();
   const members = loadMembers_();
+  perfLog_(perfScope, 'loadMembers_', t, 'count=' + members.length);
   const matches = [];
 
+  t = perfNow_();
   for (let i = 0; i < members.length; i++) {
     const member = members[i];
     if (member.status !== SIGNIN_CFG.activeStatusValue) continue;
@@ -159,18 +163,26 @@ function findMembersByDob(dobIso, sessionDateIso) {
       paymentRequired: payment.paymentRequired
     });
   }
+  perfLog_(perfScope, 'matchMembers', t, 'dob=' + dobIso + ' matches=' + matches.length);
 
+  t = perfNow_();
   matches.sort(function(a, b) {
     if (a.initials !== b.initials) return a.initials.localeCompare(b.initials, 'en-GB');
     return a.memberRow - b.memberRow;
   });
+  perfLog_(perfScope, 'sortMatches', t, 'matches=' + matches.length);
 
   if (matches.length && sessionDateIso) {
+    t = perfNow_();
     prewarmAttendanceDateCache_(sessionDateIso);
+    perfLog_(perfScope, 'prewarmAttendanceDateCache_', t, 'date=' + sessionDateIso);
   }
 
-  perfLog_('findMembersByDob', 'total', t0, 'dob=' + dobIso + ' matches=' + matches.length + (sessionDateIso ? ' sessionDate=' + sessionDateIso : ''));
-  return disambiguateDuplicateInitials_(matches);
+  t = perfNow_();
+  const resolved = disambiguateDuplicateInitials_(matches);
+  perfLog_(perfScope, 'disambiguateDuplicateInitials_', t, 'matches=' + resolved.length);
+  perfLog_(perfScope, 'total', t0, 'dob=' + dobIso + ' matches=' + resolved.length + (sessionDateIso ? ' sessionDate=' + sessionDateIso : ''));
+  return resolved;
 }
 
 function getAttendanceSignedInSetForDate_(sessionDateIso) {
@@ -403,11 +415,12 @@ function appendOtherPaymentRowsBatch_(sheet, records) {
 
 function finaliseBasketDesk(basketId, paymentMethod) {
   const total = perfNow_();
+  const perfScope = withPerfRequestScope_('finaliseBasketDesk', newPerfRequestId_());
   if (!basketId) throw new Error('Basket is required.');
 
   let t = perfNow_();
   const basket = getBasketRecord_(basketId);
-  perfLog_('finaliseBasketDesk', 'getBasketRecord_', t, 'basketId=' + basketId);
+  perfLog_(perfScope, 'getBasketRecord_', t, 'basketId=' + basketId);
   ensureBasketEditable_(basket);
 
   t = perfNow_();
@@ -415,11 +428,11 @@ function finaliseBasketDesk(basketId, paymentMethod) {
   const basketLinesPayload = getSheetPayload_(basketLinesSheet);
   const basketLinesIdx = basketLinesPayload.headerMap;
   const basketLineRows = getBasketLineRows_(basketId);
-  perfLog_('finaliseBasketDesk', 'getBasketLineRows_', t, 'basketId=' + basketId + ' lines=' + basketLineRows.length);
+  perfLog_(perfScope, 'getBasketLineRows_', t, 'basketId=' + basketId + ' lines=' + basketLineRows.length);
 
   t = perfNow_();
   const basketView = buildBasketViewFromLines_(basket, basketLineRows);
-  perfLog_('finaliseBasketDesk', 'buildBasketViewFromLines_', t, 'basketId=' + basketId + ' members=' + ((basketView && basketView.memberCount) || 0) + ' total=' + ((basketView && basketView.totalAmount) || 0));
+  perfLog_(perfScope, 'buildBasketViewFromLines_', t, 'basketId=' + basketId + ' members=' + ((basketView && basketView.memberCount) || 0) + ' total=' + ((basketView && basketView.totalAmount) || 0));
 
   if (!basketView || basketView.memberCount === 0) {
     throw new Error('Add at least one member before completing sign-in.');
@@ -463,7 +476,7 @@ function finaliseBasketDesk(basketId, paymentMethod) {
     }
     attendanceSetsByDate[dateIso][key] = true;
   }
-  perfLog_('finaliseBasketDesk', 'prepareAttendanceSets_', t, 'attendanceLines=' + attendanceLines.length + ' uniqueDates=' + Object.keys(attendanceSetsByDate).length);
+  perfLog_(perfScope, 'prepareAttendanceSets_', t, 'attendanceLines=' + attendanceLines.length + ' uniqueDates=' + Object.keys(attendanceSetsByDate).length);
 
   t = perfNow_();
   const attendanceRecords = [];
@@ -546,7 +559,7 @@ function finaliseBasketDesk(basketId, paymentMethod) {
   }
 
   applyBasketLineUpdatesBatch_(basketLinesSheet, basketLinesIdx, basketLineUpdates);
-  perfLog_('finaliseBasketDesk', 'postAttendanceLines_', t, 'count=' + attendanceLines.length);
+  perfLog_(perfScope, 'postAttendanceLines_', t, 'count=' + attendanceLines.length);
 
   t = perfNow_();
   for (const dateIso in attendanceSetsByDate) {
@@ -554,7 +567,7 @@ function finaliseBasketDesk(basketId, paymentMethod) {
       putAttendanceSignedInSetForDate_(dateIso, attendanceSetsByDate[dateIso]);
     }
   }
-  perfLog_('finaliseBasketDesk', 'writeAttendanceCaches_', t, 'dates=' + Object.keys(attendanceSetsByDate).length);
+  perfLog_(perfScope, 'writeAttendanceCaches_', t, 'dates=' + Object.keys(attendanceSetsByDate).length);
 
   t = perfNow_();
   if (extraLines.length) {
@@ -596,7 +609,7 @@ function finaliseBasketDesk(basketId, paymentMethod) {
     appendOtherPaymentRowsBatch_(otherPaymentsSheet, otherPaymentRecords);
     applyBasketLineUpdatesBatch_(basketLinesSheet, basketLinesIdx, extraLineUpdates);
   }
-  perfLog_('finaliseBasketDesk', 'postOtherPaymentLines_', t, 'count=' + extraLines.length);
+  perfLog_(perfScope, 'postOtherPaymentLines_', t, 'count=' + extraLines.length);
 
   t = perfNow_();
   updateBasketRow_(basket.rowNumber, {
@@ -609,9 +622,9 @@ function finaliseBasketDesk(basketId, paymentMethod) {
     'Posted At': now,
     'Payment Resolved At': hasChargeLines ? '' : now
   });
-  perfLog_('finaliseBasketDesk', 'updateBasketRow_', t, 'basketId=' + basketId + ' method=' + paymentMethod);
+  perfLog_(perfScope, 'updateBasketRow_', t, 'basketId=' + basketId + ' method=' + paymentMethod);
 
-  perfLog_('finaliseBasketDesk', 'total', total, 'basketId=' + basketId + ' members=' + basketView.memberCount + ' extras=' + extraLines.length);
+  perfLog_(perfScope, 'total', total, 'basketId=' + basketId + ' members=' + basketView.memberCount + ' extras=' + extraLines.length);
   return {
     ok: true,
     basketId: basketId,
@@ -691,5 +704,4 @@ function alreadySignedIn_(attendanceSheet, fullName, sessionDateIso) {
   perfLog_('alreadySignedIn_', 'lookup in set', t, 'date=' + sessionDateIso + ' result=true name=' + toInitials_(fullName));
   return true;
 }
-
 

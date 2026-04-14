@@ -916,11 +916,19 @@ function appendBasketNote_(existingText, extraText) {
 }
 
 function createBasketPaymentLink(basketId) {
+  const total = perfNow_();
+  const perfScope = withPerfRequestScope_('createBasketPaymentLink', newPerfRequestId_());
+  let t = perfNow_();
   const cfg = getSquareConfig_();
+  perfLog_(perfScope, 'getSquareConfig_', t, '');
+  t = perfNow_();
   const payable = getBasketPayableLines_(basketId);
+  perfLog_(perfScope, 'getBasketPayableLines_', t, 'basketId=' + basketId + ' lines=' + payable.lines.length);
   const basket = payable.basket;
   const lines = payable.lines;
+  t = perfNow_();
   const lineItems = buildSquareOrderLineItemsFromBasketLines_(lines);
+  perfLog_(perfScope, 'buildSquareOrderLineItemsFromBasketLines_', t, 'lineItems=' + lineItems.length);
 
   let totalAmount = 0;
   for (let i = 0; i < lines.length; i++) {
@@ -948,9 +956,12 @@ function createBasketPaymentLink(basketId) {
     }
   };
 
+  t = perfNow_();
   const result = squareRequest_('/online-checkout/payment-links', 'post', body);
+  perfLog_(perfScope, 'squareRequest_', t, 'endpoint=/online-checkout/payment-links');
   const paymentLink = result.payment_link || {};
 
+  t = perfNow_();
   updateBasketRow_(basket.rowNumber, {
     'Settlement Method': SIGNIN_CFG.paymentMethods.app,
     'Total Amount': totalAmount,
@@ -962,6 +973,8 @@ function createBasketPaymentLink(basketId) {
         Utilities.formatDate(new Date(), SIGNIN_CFG.timezone, 'dd/MM/yyyy HH:mm:ss')
     )
   });
+  perfLog_(perfScope, 'updateBasketRow_', t, 'basketId=' + basketId + ' linkId=' + (paymentLink.id || ''));
+  perfLog_(perfScope, 'total', total, 'basketId=' + basketId + ' lines=' + lines.length + ' amount=' + totalAmount);
 
   return {
     ok: true,
