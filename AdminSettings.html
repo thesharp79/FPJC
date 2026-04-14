@@ -23,7 +23,6 @@
     <div id="club-panel" class="hidden">
       <div class="row"><label>club_name</label><input id="club_name"></div>
       <div class="row"><label>banner_url</label><input id="banner_url"></div>
-      <div class="row"><label>member_form_url</label><input id="member_form_url"></div>
       <div class="row"><label>session_names_json</label><textarea id="session_names_json"></textarea></div>
       <div class="row"><label>feature_flags_json</label><textarea id="feature_flags_json"></textarea></div>
     </div>
@@ -62,7 +61,7 @@
         document.getElementById('square-panel').classList.toggle('hidden', mode !== 'square');
 
         if (data.clubConfig) {
-          ['club_name', 'banner_url', 'member_form_url', 'session_names_json', 'feature_flags_json'].forEach((key) => {
+          ['club_name', 'banner_url', 'session_names_json', 'feature_flags_json'].forEach((key) => {
             const node = document.getElementById(key);
             if (node) node.value = data.clubConfig[key] || '';
           });
@@ -103,7 +102,6 @@
           const payload = {
             club_name: document.getElementById('club_name').value,
             banner_url: document.getElementById('banner_url').value,
-            member_form_url: document.getElementById('member_form_url').value,
             session_names_json: document.getElementById('session_names_json').value,
             feature_flags_json: document.getElementById('feature_flags_json').value
           };

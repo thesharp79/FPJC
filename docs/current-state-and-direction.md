@@ -68,7 +68,6 @@ Club-facing values are now expected to live in the spreadsheet rather than in ra
 Current club-facing keys include:
 - `club_name`
 - `banner_url`
-- `member_form_url`
 - `session_names_json`
 - `feature_flags_json`
 

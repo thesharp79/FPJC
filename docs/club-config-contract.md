@@ -81,7 +81,6 @@ Recommended columns:
 | `privacy_notice_url` | text | Club privacy notice link |
 | `club_address` | text | Optional club address |
 | `club_website_url` | text | Optional website |
-| `member_form_url` | text | Registration / membership link |
 | `notes_to_desk_staff` | text | Optional operator-facing note |
 
 ## `session_names_json`

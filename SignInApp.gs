@@ -6,7 +6,7 @@ function doGet(e) {
     returnFrom: String(params.returnFrom || '').trim(),
     basketId: String(params.basketId || '').trim()
   });
-  template.MEMBERS_FORM_URL_JSON = JSON.stringify(getClubConfigValueOrFallback_('member_form_url', 'MEMBERS_FORM_URL'));
+  template.MEMBERS_FORM_URL_JSON = JSON.stringify(getOptionalScriptProperty_('MEMBERS_FORM_URL'));
   template.BANNER_URL = getClubConfigValueOrFallback_('banner_url', 'BANNER_URL');
 
   return template

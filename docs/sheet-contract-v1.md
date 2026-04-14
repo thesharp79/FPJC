@@ -174,7 +174,6 @@ These headers are required for v1 and are order-sensitive in live validation pat
 ### Optional keys (allowed blank)
 
 - `banner_url`
-- `member_form_url`
 - `support_email`
 - `support_phone`
 - `welcome_text`

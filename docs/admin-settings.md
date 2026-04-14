@@ -14,7 +14,6 @@ Current keys managed by the UI:
 - `session_names_json` (required)
 - `feature_flags_json` (required)
 - `banner_url` (optional)
-- `member_form_url` (optional)
 
 These are expected to remain club-facing and should not be moved back to Script Properties.
 

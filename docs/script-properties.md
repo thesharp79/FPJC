@@ -4,7 +4,7 @@ This project uses Apps Script **Script Properties** for runtime-owned values and
 
 ## Policy
 
-- Keep **club-facing settings** in `Club_Config` (for example club name, session names, feature flags, banner/member form values).
+- Keep **club-facing settings** in `Club_Config` (for example club name, session names, feature flags, and banner values).
 - Keep **runtime/secrets/integration values** in Script Properties.
 - Do not move club-editable values back into Script Properties unless there is a clear runtime or secret-management reason.
 
@@ -43,7 +43,6 @@ These are legacy fallbacks and should be treated as transitional:
 
 | Property | Status | Fallback behaviour |
 |---|---|---|
-| `MEMBERS_FORM_URL` | Legacy fallback | Used only when `Club_Config.member_form_url` is blank. |
 | `BANNER_URL` | Legacy fallback | Used only when `Club_Config.banner_url` is blank. |
 
 Preferred source for these values is `Club_Config`.

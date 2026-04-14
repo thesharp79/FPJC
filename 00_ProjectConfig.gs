@@ -5,7 +5,6 @@
  */
 const SIGNIN_CFG = {
   spreadsheetId: getScriptPropertyRequired_('SPREADSHEET_ID'),
-  membersFormUrl: getOptionalScriptProperty_('MEMBERS_FORM_URL'),
   bannerUrl: getOptionalScriptProperty_('BANNER_URL'),
   clubName: '',
   sessionNamesJson: '',
