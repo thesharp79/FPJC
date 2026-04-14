@@ -901,6 +901,30 @@ function getBasketPayableLines_(basketId) {
   };
 }
 
+function getPayableSquareLinesFromBasketLines_(basketId, lines) {
+  const payableLines = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    if (line.lineType === 'ATTENDANCE') continue;
+    if (line.paymentRequired !== true) continue;
+    if (line.paid === true) continue;
+
+    if (!String(line.squareVariationId || '').trim()) {
+      throw new Error('Basket line "' + (line.description || line.lineId || 'Unknown') + '" is missing a Square Variation ID.');
+    }
+
+    payableLines.push(line);
+  }
+
+  if (!payableLines.length) {
+    throw new Error('Basket has no unpaid Square-payable lines.');
+  }
+
+  return payableLines;
+}
+
 function buildSquareOrderLineItemsFromBasketLines_(lines) {
   const lineItems = [];
 
@@ -925,17 +949,15 @@ function appendBasketNote_(existingText, extraText) {
   return current + ' | ' + extra;
 }
 
-function createBasketPaymentLink(basketId) {
+function createBasketPaymentLinkFromPayableContext_(context) {
   const total = perfNow_();
-  const perfScope = withPerfRequestScope_('createBasketPaymentLink', newPerfRequestId_());
+  const perfScope = context.perfScope || withPerfRequestScope_('createBasketPaymentLinkFromPayableContext_', newPerfRequestId_());
+
   let t = perfNow_();
   const cfg = getSquareConfig_();
   perfLog_(perfScope, 'getSquareConfig_', t, '');
-  t = perfNow_();
-  const payable = getBasketPayableLines_(basketId);
-  perfLog_(perfScope, 'getBasketPayableLines_', t, 'basketId=' + basketId + ' lines=' + payable.lines.length);
-  const basket = payable.basket;
-  const lines = payable.lines;
+
+  const lines = context.lines || [];
   t = perfNow_();
   const lineItems = buildSquareOrderLineItemsFromBasketLines_(lines);
   perfLog_(perfScope, 'buildSquareOrderLineItemsFromBasketLines_', t, 'lineItems=' + lineItems.length);
@@ -951,10 +973,10 @@ function createBasketPaymentLink(basketId) {
   const appUrl = ScriptApp.getService().getUrl();
   const returnUrl =
     appUrl +
-    '?returnFrom=square&basketId=' + encodeURIComponent(basketId);
+    '?returnFrom=square&basketId=' + encodeURIComponent(context.basketId);
 
   const body = {
-    idempotency_key: 'basket-link-' + basketId,
+    idempotency_key: 'basket-link-' + context.basketId,
     order: {
       location_id: cfg.locationId,
       line_items: lineItems
@@ -972,23 +994,23 @@ function createBasketPaymentLink(basketId) {
   const paymentLink = result.payment_link || {};
 
   t = perfNow_();
-  updateBasketRow_(basket.rowNumber, {
+  updateBasketRow_(context.basketRowNumber, {
     'Settlement Method': SIGNIN_CFG.paymentMethods.app,
     'Total Amount': totalAmount,
     'Square Order ID': paymentLink.order_id || '',
     'Square Payment Link ID': paymentLink.id || '',
     'Notes': appendBasketNote_(
-      basket.notes,
+      context.basketNotes,
       'Square payment link created on ' +
         Utilities.formatDate(new Date(), SIGNIN_CFG.timezone, 'dd/MM/yyyy HH:mm:ss')
     )
   });
-  perfLog_(perfScope, 'updateBasketRow_', t, 'basketId=' + basketId + ' linkId=' + (paymentLink.id || ''));
-  perfLog_(perfScope, 'total', total, 'basketId=' + basketId + ' lines=' + lines.length + ' amount=' + totalAmount);
+  perfLog_(perfScope, 'updateBasketRow_square_', t, 'basketId=' + context.basketId + ' linkId=' + (paymentLink.id || ''));
+  perfLog_(perfScope, 'total_square_', total, 'basketId=' + context.basketId + ' lines=' + lines.length + ' amount=' + totalAmount);
 
   return {
     ok: true,
-    basketId: basketId,
+    basketId: context.basketId,
     paymentLinkId: paymentLink.id || '',
     paymentLinkUrl: paymentLink.url || '',
     orderId: paymentLink.order_id || '',
@@ -996,6 +1018,25 @@ function createBasketPaymentLink(basketId) {
     formattedAmount: formatCurrency_(totalAmount),
     returnUrl: returnUrl
   };
+}
+
+function createBasketPaymentLink(basketId) {
+  const total = perfNow_();
+  const perfScope = withPerfRequestScope_('createBasketPaymentLink', newPerfRequestId_());
+  let t = perfNow_();
+  const payable = getBasketPayableLines_(basketId);
+  perfLog_(perfScope, 'getBasketPayableLines_', t, 'basketId=' + basketId + ' lines=' + payable.lines.length);
+  t = perfNow_();
+  const response = createBasketPaymentLinkFromPayableContext_({
+    basketId: basketId,
+    basketRowNumber: payable.basket.rowNumber,
+    basketNotes: payable.basket.notes,
+    lines: payable.lines,
+    perfScope: perfScope
+  });
+  perfLog_(perfScope, 'createBasketPaymentLinkFromPayableContext_', t, 'basketId=' + basketId);
+  perfLog_(perfScope, 'total', total, 'basketId=' + basketId + ' lines=' + payable.lines.length + ' amount=' + response.amount);
+  return response;
 }
 
 function getSquareOrder_(orderId) {

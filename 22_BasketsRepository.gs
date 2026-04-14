@@ -147,3 +147,11 @@ function updateBasketRow_(rowNumber, updates) {
   updateBasketRecordCacheByRow_(rowNumber, updates);
 }
 
+function getBasketNotesByRowNumber_(rowNumber) {
+  if (!rowNumber) return '';
+  const sheet = getBasketsSheet_();
+  const meta = getHeaderMeta_(sheet);
+  const idx = meta.headerMap;
+  const notesCol = requireHeader_(idx, SIGNIN_CFG.basketHeaders.notes) + 1;
+  return String(sheet.getRange(rowNumber, notesCol, 1, 1).getValue() || '').trim();
+}

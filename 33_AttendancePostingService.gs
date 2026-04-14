@@ -415,15 +415,18 @@ function appendOtherPaymentRowsBatch_(sheet, records) {
 
 
 
-function finaliseBasketDesk(basketId, paymentMethod) {
+function finaliseBasketDeskInternal_(basketId, paymentMethod, options) {
+  options = options || {};
   const total = perfNow_();
-  const perfScope = withPerfRequestScope_('finaliseBasketDesk', newPerfRequestId_());
+  const perfScope = options.perfScope || withPerfRequestScope_('finaliseBasketDesk', newPerfRequestId_());
   if (!basketId) throw new Error('Basket is required.');
 
   let t = perfNow_();
   const basket = getBasketRecord_(basketId);
   perfLog_(perfScope, 'getBasketRecord_', t, 'basketId=' + basketId);
+  t = perfNow_();
   ensureBasketEditable_(basket);
+  perfLog_(perfScope, 'ensureBasketEditable_', t, 'basketId=' + basketId + ' status=' + basket.status);
 
   t = perfNow_();
   const basketLinesSheet = getBasketLinesSheet_();
@@ -627,7 +630,7 @@ function finaliseBasketDesk(basketId, paymentMethod) {
   perfLog_(perfScope, 'updateBasketRow_', t, 'basketId=' + basketId + ' method=' + paymentMethod);
 
   perfLog_(perfScope, 'total', total, 'basketId=' + basketId + ' members=' + basketView.memberCount + ' extras=' + extraLines.length);
-  return {
+  const result = {
     ok: true,
     basketId: basketId,
     paymentPending: hasChargeLines,
@@ -640,6 +643,65 @@ function finaliseBasketDesk(basketId, paymentMethod) {
       ? 'Sign-in completed. Payment is still pending.'
       : 'Sign-in completed.'
   };
+
+  if (options.includeAppCheckoutContext === true && hasChargeLines) {
+    t = perfNow_();
+    const basketNotes = getBasketNotesByRowNumber_(basket.rowNumber);
+    perfLog_(perfScope, 'getBasketNotesByRowNumber_', t, 'basketId=' + basketId);
+    result.appCheckoutContext = {
+      basketId: basketId,
+      basketRowNumber: basket.rowNumber,
+      basketNotes: basketNotes,
+      basketLineRows: basketLineRows
+    };
+  }
+
+  return result;
+}
+
+function finaliseBasketDesk(basketId, paymentMethod) {
+  return finaliseBasketDeskInternal_(basketId, paymentMethod);
+}
+
+function finaliseBasketForAppCheckout(basketId) {
+  const total = perfNow_();
+  const perfScope = withPerfRequestScope_('finaliseBasketForAppCheckout', newPerfRequestId_());
+  let t = perfNow_();
+  const result = finaliseBasketDeskInternal_(basketId, SIGNIN_CFG.paymentMethods.app, {
+    perfScope: perfScope,
+    includeAppCheckoutContext: true
+  });
+  perfLog_(perfScope, 'finaliseBasketDeskInternal_', t, 'basketId=' + basketId + ' paymentPending=' + result.paymentPending);
+
+  if (!result.paymentPending || !result.appCheckoutContext) {
+    perfLog_(perfScope, 'total', total, 'basketId=' + basketId + ' paymentPending=false');
+    return result;
+  }
+
+  const checkoutContext = result.appCheckoutContext;
+  try {
+    t = perfNow_();
+    const payableLines = getPayableSquareLinesFromBasketLines_(basketId, checkoutContext.basketLineRows);
+    perfLog_(perfScope, 'prepareSquarePayableLines_', t, 'basketId=' + basketId + ' lines=' + payableLines.length);
+
+    t = perfNow_();
+    const payment = createBasketPaymentLinkFromPayableContext_({
+      basketId: basketId,
+      basketRowNumber: checkoutContext.basketRowNumber,
+      basketNotes: checkoutContext.basketNotes,
+      lines: payableLines,
+      perfScope: perfScope
+    });
+    perfLog_(perfScope, 'createBasketPaymentLinkFromPayableContext_', t, 'basketId=' + basketId + ' ok=true');
+    result.payment = payment;
+  } catch (err) {
+    perfLog_(perfScope, 'createBasketPaymentLinkFromPayableContext_', t, 'basketId=' + basketId + ' ok=false err=' + String(err && err.message ? err.message : err));
+    result.paymentError = err && err.message ? err.message : 'Unknown error.';
+  }
+
+  delete result.appCheckoutContext;
+  perfLog_(perfScope, 'total', total, 'basketId=' + basketId + ' paymentPending=' + result.paymentPending);
+  return result;
 }
 
 
@@ -706,4 +768,3 @@ function alreadySignedIn_(attendanceSheet, fullName, sessionDateIso) {
   perfLog_('alreadySignedIn_', 'lookup in set', t, 'date=' + sessionDateIso + ' result=true name=' + toInitials_(fullName));
   return true;
 }
-
