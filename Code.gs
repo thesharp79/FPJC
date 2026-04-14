@@ -617,7 +617,8 @@ function onOpen(e) {
   if (isSupportMenuEnabled_()) {
     const supportToolsMenu = ui
       .createMenu('Support tools')
-      .addItem('Preview Square payment sync', 'previewSquareCommercialSyncFromMenu');
+      .addItem('Preview Square payment sync', 'previewSquareCommercialSyncFromMenu')
+      .addItem('Clear sign-in caches', 'clearSignInCachesFromMenu');
     adminMenu.addSubMenu(supportToolsMenu);
   }
 

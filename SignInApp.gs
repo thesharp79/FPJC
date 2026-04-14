@@ -195,15 +195,13 @@ function updateBasketTotalsFromLines_(basketRowNumber, lines) {
   const sheet = getBasketsSheet_();
   const meta = getHeaderMeta_(sheet);
   const idx = meta.headerMap;
-  const startIdx = requireHeader_(idx, SIGNIN_CFG.basketHeaders.status);
-  const endIdx = requireHeader_(idx, SIGNIN_CFG.basketHeaders.memberCount);
-  const rowValues = sheet.getRange(basketRowNumber, startIdx + 1, 1, endIdx - startIdx + 1).getValues()[0];
+  const statusCol = requireHeader_(idx, SIGNIN_CFG.basketHeaders.status) + 1;
+  const totalCol = requireHeader_(idx, SIGNIN_CFG.basketHeaders.totalAmount) + 1;
+  const memberCountCol = requireHeader_(idx, SIGNIN_CFG.basketHeaders.memberCount) + 1;
 
-  rowValues[idx[SIGNIN_CFG.basketHeaders.status] - startIdx] = summary.status;
-  rowValues[idx[SIGNIN_CFG.basketHeaders.totalAmount] - startIdx] = summary.totalAmount;
-  rowValues[idx[SIGNIN_CFG.basketHeaders.memberCount] - startIdx] = summary.memberCount;
-
-  sheet.getRange(basketRowNumber, startIdx + 1, 1, endIdx - startIdx + 1).setValues([rowValues]);
+  sheet.getRange(basketRowNumber, statusCol).setValue(summary.status);
+  sheet.getRange(basketRowNumber, totalCol).setValue(summary.totalAmount);
+  sheet.getRange(basketRowNumber, memberCountCol).setValue(summary.memberCount);
   invalidateSheetRuntimeCache_(sheet);
   updateBasketRecordCacheByRow_(basketRowNumber, {
     Status: summary.status
