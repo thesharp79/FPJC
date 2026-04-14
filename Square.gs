@@ -833,9 +833,9 @@ function getBasketExtendedRecord_(basketId) {
   if (!basket) return null;
 
   const sheet = getBasketsSheet_();
-  const payload = getSheetPayload_(sheet);
-  const idx = payload.headerMap;
-  const row = payload.values[basket.rowNumber - 1];
+  const meta = getHeaderMeta_(sheet);
+  const idx = meta.headerMap;
+  const row = sheet.getRange(basket.rowNumber, 1, 1, meta.lastColumn).getValues()[0];
 
   return {
     rowNumber: basket.rowNumber,
@@ -855,7 +855,11 @@ function getBasketExtendedRecord_(basketId) {
 }
 
 function getBasketPayableLines_(basketId) {
+  const total = perfNow_();
+  const perfScope = withPerfRequestScope_('getBasketPayableLines_', newPerfRequestId_());
+  let t = perfNow_();
   const basket = getBasketExtendedRecord_(basketId);
+  perfLog_(perfScope, 'getBasketExtendedRecord_', t, 'basketId=' + basketId + ' found=' + !!basket);
   if (!basket) {
     throw new Error('Basket not found.');
   }
@@ -864,9 +868,12 @@ function getBasketPayableLines_(basketId) {
     throw new Error('Basket must be in SIGNED_IN_AWAITING_PAYMENT before creating a Square payment link.');
   }
 
+  t = perfNow_();
   const lines = getBasketLineRows_(basketId);
+  perfLog_(perfScope, 'getBasketLineRows_', t, 'basketId=' + basketId + ' lines=' + lines.length);
   const payableLines = [];
 
+  t = perfNow_();
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
@@ -880,10 +887,13 @@ function getBasketPayableLines_(basketId) {
 
     payableLines.push(line);
   }
+  perfLog_(perfScope, 'filter payable lines', t, 'basketId=' + basketId + ' payable=' + payableLines.length + ' from=' + lines.length);
 
   if (!payableLines.length) {
     throw new Error('Basket has no unpaid Square-payable lines.');
   }
+
+  perfLog_(perfScope, 'total', total, 'basketId=' + basketId + ' payable=' + payableLines.length);
 
   return {
     basket: basket,
@@ -1016,7 +1026,11 @@ function extractPaymentIdFromSquareOrder_(order) {
 }
 
 function checkBasketPaymentStatus(basketId) {
+  const total = perfNow_();
+  const perfScope = withPerfRequestScope_('checkBasketPaymentStatus', newPerfRequestId_());
+  let t = perfNow_();
   const basket = getBasketExtendedRecord_(basketId);
+  perfLog_(perfScope, 'getBasketExtendedRecord_', t, 'basketId=' + basketId + ' found=' + !!basket);
   if (!basket) {
     throw new Error('Basket not found.');
   }
@@ -1025,13 +1039,17 @@ function checkBasketPaymentStatus(basketId) {
     throw new Error('Basket does not yet have a Square Order ID.');
   }
 
+  t = perfNow_();
   const response = getSquareOrder_(basket.squareOrderId);
+  perfLog_(perfScope, 'getSquareOrder_', t, 'basketId=' + basketId + ' orderId=' + basket.squareOrderId);
+  t = perfNow_();
   const order = response.order || {};
   const orderState = String(order.state || '').trim().toUpperCase();
   const amountDueMinor = Number(((order.net_amount_due_money || {}).amount) || 0);
   const squarePaymentId = extractPaymentIdFromSquareOrder_(order);
 
   const isPaid = (orderState === 'COMPLETED') || (amountDueMinor === 0 && orderState !== 'CANCELED');
+  perfLog_(perfScope, 'evaluate payment state', t, 'basketId=' + basketId + ' orderState=' + orderState + ' due=' + amountDueMinor + ' isPaid=' + isPaid);
 
   let resolved = false;
   if (
@@ -1039,9 +1057,13 @@ function checkBasketPaymentStatus(basketId) {
     basket.status !== SIGNIN_CFG.basketStatuses.paymentResolved &&
     basket.status !== SIGNIN_CFG.basketStatuses.posted
   ) {
+    t = perfNow_();
     resolveBasketPaymentApp(basketId, squarePaymentId);
+    perfLog_(perfScope, 'resolveBasketPaymentApp', t, 'basketId=' + basketId + ' paymentId=' + (squarePaymentId || ''));
     resolved = true;
   }
+
+  perfLog_(perfScope, 'total', total, 'basketId=' + basketId + ' resolved=' + resolved + ' orderState=' + orderState);
 
   return {
     ok: true,

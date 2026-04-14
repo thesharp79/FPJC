@@ -159,15 +159,6 @@ function prewarmSession(sessionDateIso) {
   const options = loadPaymentOptions_();
   perfLog_(perfScope, 'loadPaymentOptions_', t, 'count=' + options.length);
 
-  t = perfNow_();
-  try {
-    getHeaderMeta_(getBasketsSheet_());
-    getHeaderMeta_(getBasketLinesSheet_());
-    perfLog_(perfScope, 'warm basket sheet meta', t, 'ok=true');
-  } catch (e) {
-    perfLog_(perfScope, 'warm basket sheet meta failed', t, 'err=' + String(e));
-  }
-
   if (sessionDateIso) {
     t = perfNow_();
     getAttendanceSignedInSetForDate_(sessionDateIso);
