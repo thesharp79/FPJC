@@ -899,30 +899,32 @@
 
         google.script.run
           .withSuccessHandler(result => {
-            if (result && result.paymentPending) {
-              google.script.run
-                .withSuccessHandler(payment => {
-                  setBusy(false);
-                  clearBasketUi();
-                  resetChoiceArea();
-                  document.getElementById('dob').value = '';
-                  hideMessage('lookupMsg');
-                  renderPaymentPrompt(result.message || 'Sign-in completed. Payment is still pending.', payment);
-                  document.getElementById('dob').focus();
-                })
-                .withFailureHandler(err => {
-                  setBusy(false);
-                  clearBasketUi();
-                  resetChoiceArea();
-                  document.getElementById('dob').value = '';
-                  showMessage(
-                    'lookupMsg',
-                    (result.message || 'Sign-in completed.') + ' Payment link could not be created: ' + (err && err.message ? err.message : 'Unknown error.'),
-                    false
-                  );
-                  document.getElementById('dob').focus();
-                })
-                .createBasketPaymentLink(result.basketId);
+            if (result && result.paymentPending === true) {
+              const payment = result.payment || null;
+              const paymentUrl = payment && payment.paymentLinkUrl ? String(payment.paymentLinkUrl) : '';
+              const paymentError = result.paymentError ? String(result.paymentError) : '';
+
+              if (paymentUrl) {
+                setBusy(true, 'Opening secure online checkout…');
+                window.top.location.href = paymentUrl;
+                return;
+              }
+
+              setBusy(false);
+              clearBasketUi();
+              resetChoiceArea();
+              document.getElementById('dob').value = '';
+              if (payment) {
+                hideMessage('lookupMsg');
+                renderPaymentPrompt(result.message || 'Sign-in completed. Payment is still pending.', payment);
+              } else {
+                showMessage(
+                  'lookupMsg',
+                  (result.message || 'Sign-in completed.') + ' Payment link could not be created: ' + (paymentError || 'Unknown error.'),
+                  false
+                );
+              }
+              document.getElementById('dob').focus();
               return;
             }
 
@@ -938,7 +940,7 @@
             setBusy(false);
             showMessage('basketMsg', err && err.message ? err.message : 'Could not complete sign-in.', false);
           })
-          .finaliseBasketDesk(currentBasketId);
+          .finaliseBasketForAppCheckout(currentBasketId);
       }
 
 
