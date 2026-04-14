@@ -94,10 +94,17 @@ function addExtraToBasket(basketId, memberKey, optionCode) {
     notes: newLine.notes || ''
   }]);
 
-  t = perfNow_();
-  const summary = updateBasketTotalsFromLines_(basket.rowNumber, combinedLines);
-  basket.status = summary.status;
-  perfLog_(perfScope, 'updateBasketTotalsFromLines_', t, 'basketId=' + basketId + ' lines=' + combinedLines.length);
+  if (basket.status === SIGNIN_CFG.basketStatuses.building) {
+    t = perfNow_();
+    const summary = buildBasketSummaryFromLines_(combinedLines);
+    basket.status = summary.status;
+    perfLog_(perfScope, 'buildBasketSummaryFromLines_', t, 'basketId=' + basketId + ' lines=' + combinedLines.length + ' persist=false');
+  } else {
+    t = perfNow_();
+    const summary = updateBasketTotalsFromLines_(basket.rowNumber, combinedLines);
+    basket.status = summary.status;
+    perfLog_(perfScope, 'updateBasketTotalsFromLines_', t, 'basketId=' + basketId + ' lines=' + combinedLines.length);
+  }
 
   t = perfNow_();
   const basketView = buildBasketViewFromLines_(basket, combinedLines);
@@ -330,10 +337,17 @@ function addMemberToBasket(basketId, memberRow, sessionDateIso) {
     };
   }));
 
-  t = perfNow_();
-  const summary = updateBasketTotalsFromLines_(basket.rowNumber, combinedLines);
-  basket.status = summary.status;
-  perfLog_(perfScope, 'updateBasketTotalsFromLines_', t, 'basketId=' + basketId + ' lines=' + combinedLines.length);
+  if (basket.status === SIGNIN_CFG.basketStatuses.building) {
+    t = perfNow_();
+    const summary = buildBasketSummaryFromLines_(combinedLines);
+    basket.status = summary.status;
+    perfLog_(perfScope, 'buildBasketSummaryFromLines_', t, 'basketId=' + basketId + ' lines=' + combinedLines.length + ' persist=false');
+  } else {
+    t = perfNow_();
+    const summary = updateBasketTotalsFromLines_(basket.rowNumber, combinedLines);
+    basket.status = summary.status;
+    perfLog_(perfScope, 'updateBasketTotalsFromLines_', t, 'basketId=' + basketId + ' lines=' + combinedLines.length);
+  }
 
   t = perfNow_();
   const basketView = buildBasketViewFromLines_(basket, combinedLines);
@@ -347,22 +361,51 @@ function addMemberToBasket(basketId, memberRow, sessionDateIso) {
   };
 }
 
-function refreshBasketAfterLineRemoval_(basketId) {
+function refreshBasketAfterLineRemoval_(basketId, perfScope) {
+  let t = perfNow_();
   invalidateBasketLinesCache_(basketId);
+  if (perfScope) perfLog_(perfScope, 'invalidateBasketLinesCache_', t, 'basketId=' + basketId);
+  t = perfNow_();
   const basket = getBasketRecord_(basketId);
+  if (perfScope) perfLog_(perfScope, 'getBasketRecord_', t, 'basketId=' + basketId);
+  t = perfNow_();
   const freshLines = getBasketLineRows_(basketId);
-  updateBasketTotalsFromLines_(basket.rowNumber, freshLines);
-  const refreshedBasket = getBasketRecord_(basketId);
-  return buildBasketViewFromLines_(refreshedBasket, freshLines);
+  if (perfScope) perfLog_(perfScope, 'getBasketLineRows_', t, 'basketId=' + basketId + ' lines=' + freshLines.length);
+
+  if (basket.status === SIGNIN_CFG.basketStatuses.building) {
+    t = perfNow_();
+    const summary = buildBasketSummaryFromLines_(freshLines);
+    basket.status = summary.status;
+    if (perfScope) perfLog_(perfScope, 'buildBasketSummaryFromLines_', t, 'basketId=' + basketId + ' lines=' + freshLines.length + ' persist=false');
+    t = perfNow_();
+    const basketViewBuilding = buildBasketViewFromLines_(basket, freshLines);
+    if (perfScope) perfLog_(perfScope, 'buildBasketViewFromLines_', t, 'basketId=' + basketId + ' members=' + basketViewBuilding.memberCount + ' total=' + basketViewBuilding.totalAmount);
+    return basketViewBuilding;
+  }
+
+  t = perfNow_();
+  const summary = updateBasketTotalsFromLines_(basket.rowNumber, freshLines);
+  basket.status = summary.status;
+  if (perfScope) perfLog_(perfScope, 'updateBasketTotalsFromLines_', t, 'basketId=' + basketId + ' lines=' + freshLines.length);
+  t = perfNow_();
+  const basketView = buildBasketViewFromLines_(basket, freshLines);
+  if (perfScope) perfLog_(perfScope, 'buildBasketViewFromLines_', t, 'basketId=' + basketId + ' members=' + basketView.memberCount + ' total=' + basketView.totalAmount);
+  return basketView;
 }
 
 function removeMemberFromBasket(basketId, memberKey) {
+  const total = perfNow_();
+  const perfScope = withPerfRequestScope_('removeMemberFromBasket', newPerfRequestId_());
   if (!basketId || !memberKey) throw new Error('Basket and member are required.');
 
+  let t = perfNow_();
   const basket = getBasketRecord_(basketId);
+  perfLog_(perfScope, 'getBasketRecord_', t, 'basketId=' + basketId);
   ensureBasketEditable_(basket);
 
+  t = perfNow_();
   const lines = getBasketLineRows_(basketId);
+  perfLog_(perfScope, 'getBasketLineRows_', t, 'basketId=' + basketId + ' lines=' + lines.length);
   const toRemove = lines.filter(function(line) {
     return String(line.memberKey || '').trim() === String(memberKey || '').trim();
   });
@@ -375,8 +418,11 @@ function removeMemberFromBasket(basketId, memberKey) {
     };
   }
 
+  t = perfNow_();
   clearBasketLineRows_(toRemove.map(function(line) { return line.rowNumber; }));
-  const basketView = refreshBasketAfterLineRemoval_(basketId);
+  perfLog_(perfScope, 'clearBasketLineRows_', t, 'basketId=' + basketId + ' rows=' + toRemove.length);
+  const basketView = refreshBasketAfterLineRemoval_(basketId, perfScope);
+  perfLog_(perfScope, 'total', total, 'basketId=' + basketId + ' removed=' + toRemove.length);
 
   return {
     basketId: basketId,
@@ -386,12 +432,18 @@ function removeMemberFromBasket(basketId, memberKey) {
 }
 
 function removeBasketLine(basketId, lineId) {
+  const total = perfNow_();
+  const perfScope = withPerfRequestScope_('removeBasketLine', newPerfRequestId_());
   if (!basketId || !lineId) throw new Error('Basket and line are required.');
 
+  let t = perfNow_();
   const basket = getBasketRecord_(basketId);
+  perfLog_(perfScope, 'getBasketRecord_', t, 'basketId=' + basketId);
   ensureBasketEditable_(basket);
 
+  t = perfNow_();
   const lines = getBasketLineRows_(basketId);
+  perfLog_(perfScope, 'getBasketLineRows_', t, 'basketId=' + basketId + ' lines=' + lines.length);
   const line = lines.find(function(item) {
     return String(item.lineId || '').trim() === String(lineId || '').trim();
   });
@@ -408,8 +460,11 @@ function removeBasketLine(basketId, lineId) {
     throw new Error('Use the member remove action to remove attendance rows.');
   }
 
+  t = perfNow_();
   clearBasketLineRows_([line.rowNumber]);
-  const basketView = refreshBasketAfterLineRemoval_(basketId);
+  perfLog_(perfScope, 'clearBasketLineRows_', t, 'basketId=' + basketId + ' rows=1');
+  const basketView = refreshBasketAfterLineRemoval_(basketId, perfScope);
+  perfLog_(perfScope, 'total', total, 'basketId=' + basketId + ' lineId=' + lineId);
 
   return {
     basketId: basketId,
