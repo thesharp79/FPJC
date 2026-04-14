@@ -16,6 +16,7 @@ This project uses Apps Script **Script Properties** for runtime-owned values and
 |---|---:|---|
 | `SPREADSHEET_ID` | Yes | Spreadsheet binding for runtime operations. |
 | `ENABLE_SUPPORT_MENU` | No | Shows `Admin → Support tools` when set to `true`. |
+| `ENABLE_PERF_LOGS` | No | Enables server-side perf timing logs when value is literal `true` (case-insensitive after trim). Default is disabled. |
 
 ### Square integration
 
@@ -50,7 +51,7 @@ Preferred source for these values is `Club_Config`.
 
 ## Admin UI coverage
 
-The Admin Settings UI currently manages most runtime properties used day-to-day, but **`APP_ENV`** and **`WEBHOOK_TOKEN`** are not currently exposed there and may still require direct Script Properties management.
+The Admin Settings UI currently manages most runtime properties used day-to-day, but **`APP_ENV`**, **`WEBHOOK_TOKEN`**, and **`ENABLE_PERF_LOGS`** are not currently exposed there and may still require direct Script Properties management.
 
 ## Environment guidance
 

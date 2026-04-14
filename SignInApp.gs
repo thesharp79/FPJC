@@ -101,19 +101,34 @@ function appendBasketLine_(record) {
    - log-only profiling
 \============================== */
 
-const DEBUG_PERF = false;
-const PERF_ENABLED = DEBUG_PERF;
 const AUTO_CANCEL_STALE_BUILDING_BASKETS = true;
 const STALE_BUILDING_BASKET_HOURS = 12;
 const STALE_BASKET_CLEANUP_BATCH_LIMIT = 25;
 const STALE_BASKET_CLEANUP_THROTTLE_SECONDS = 900;
+let PERF_LOGGING_ENABLED_CACHE_ = null;
 
 function perfNow_() {
   return Date.now();
 }
 
+function isPerfLoggingEnabled_() {
+  if (PERF_LOGGING_ENABLED_CACHE_ !== null) return PERF_LOGGING_ENABLED_CACHE_;
+  const raw = String(PropertiesService.getScriptProperties().getProperty('ENABLE_PERF_LOGS') || '').trim().toLowerCase();
+  PERF_LOGGING_ENABLED_CACHE_ = raw === 'true';
+  return PERF_LOGGING_ENABLED_CACHE_;
+}
+
+function newPerfRequestId_() {
+  return Utilities.getUuid().slice(0, 8);
+}
+
+function withPerfRequestScope_(scope, requestId) {
+  if (!requestId) return scope;
+  return scope + '#' + requestId;
+}
+
 function perfLog_(scope, step, startedAt, extra) {
-  if (!PERF_ENABLED) return;
+  if (!isPerfLoggingEnabled_()) return;
   const ms = Date.now() - startedAt;
   const suffix = extra ? ' | ' + extra : '';
   console.log('[PERF][' + scope + '] ' + step + ': ' + ms + 'ms' + suffix);
@@ -133,32 +148,33 @@ function perfLog_(scope, step, startedAt, extra) {
 
 function prewarmSession(sessionDateIso) {
   const t0 = perfNow_();
+  const perfScope = withPerfRequestScope_('prewarmSession', newPerfRequestId_());
   if (sessionDateIso) assertIsoDate_(sessionDateIso, 'Session date');
 
   let t = perfNow_();
   const members = loadMembers_();
-  perfLog_('prewarmSession', 'loadMembers_', t, 'count=' + members.length);
+  perfLog_(perfScope, 'loadMembers_', t, 'count=' + members.length);
 
   t = perfNow_();
   const options = loadPaymentOptions_();
-  perfLog_('prewarmSession', 'loadPaymentOptions_', t, 'count=' + options.length);
+  perfLog_(perfScope, 'loadPaymentOptions_', t, 'count=' + options.length);
 
   t = perfNow_();
   try {
     getHeaderMeta_(getBasketsSheet_());
     getHeaderMeta_(getBasketLinesSheet_());
-    perfLog_('prewarmSession', 'warm basket sheet meta', t, 'ok=true');
+    perfLog_(perfScope, 'warm basket sheet meta', t, 'ok=true');
   } catch (e) {
-    perfLog_('prewarmSession', 'warm basket sheet meta failed', t, 'err=' + String(e));
+    perfLog_(perfScope, 'warm basket sheet meta failed', t, 'err=' + String(e));
   }
 
   if (sessionDateIso) {
     t = perfNow_();
     getAttendanceSignedInSetForDate_(sessionDateIso);
-    perfLog_('prewarmSession', 'warm attendance date cache', t, 'date=' + sessionDateIso);
+    perfLog_(perfScope, 'warm attendance date cache', t, 'date=' + sessionDateIso);
   }
 
-  perfLog_('prewarmSession', 'total', t0, sessionDateIso ? 'date=' + sessionDateIso : '');
+  perfLog_(perfScope, 'total', t0, sessionDateIso ? 'date=' + sessionDateIso : '');
   return { ok: true, sessionDate: sessionDateIso || '' };
 }
 
@@ -203,7 +219,7 @@ function updateBasketTotalsFromLines_(basketRowNumber, lines) {
 
 /* ==============================
    Stage 1 housekeeping patch v12
-   - profiling gated behind DEBUG_PERF
+   - profiling gated behind ENABLE_PERF_LOGS script property
    - stale BUILDING basket cleanup
    - admin cache reset helpers
 \============================== */

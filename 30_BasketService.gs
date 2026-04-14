@@ -1,13 +1,21 @@
 function addExtraToBasket(basketId, memberKey, optionCode) {
+  const total = perfNow_();
+  const perfScope = withPerfRequestScope_('addExtraToBasket', newPerfRequestId_());
   if (!basketId || !memberKey || !optionCode) {
     throw new Error('Basket, member and payment option are required.');
   }
 
+  let t = perfNow_();
   const basket = getBasketRecord_(basketId);
+  perfLog_(perfScope, 'getBasketRecord_', t, 'basketId=' + basketId);
   ensureBasketEditable_(basket);
 
+  t = perfNow_();
   const member = getMemberByKey_(memberKey);
+  perfLog_(perfScope, 'getMemberByKey_', t, 'member=' + member.initials);
+  t = perfNow_();
   const option = getPaymentOptionByCode_(optionCode, basket.sessionDateIso, 'DESK', member.sessionName);
+  perfLog_(perfScope, 'getPaymentOptionByCode_', t, 'code=' + option.code + ' member=' + member.initials);
 
   if (option.chargeType === 'SESSION') {
     throw new Error('Session payment rows are added automatically from the member session.');
@@ -17,14 +25,23 @@ function addExtraToBasket(basketId, memberKey, optionCode) {
     throw new Error('Payment option "' + option.code + '" needs a valid amount.');
   }
 
+  t = perfNow_();
   const existingLines = getBasketLineRows_(basketId);
+  perfLog_(perfScope, 'getBasketLineRows_', t, 'basketId=' + basketId + ' lines=' + existingLines.length);
+  t = perfNow_();
   if (basketAlreadyHasOptionForMember_(basketId, memberKey, option.code)) {
+    perfLog_(perfScope, 'basketAlreadyHasOptionForMember_', t, 'duplicate=true code=' + option.code + ' member=' + member.initials);
+    t = perfNow_();
+    const basketViewDup = buildBasketViewFromLines_(basket, existingLines);
+    perfLog_(perfScope, 'buildBasketViewFromLines_', t, 'basketId=' + basketId + ' members=' + basketViewDup.memberCount + ' total=' + basketViewDup.totalAmount);
+    perfLog_(perfScope, 'total', total, 'basketId=' + basketId + ' duplicate=true');
     return {
       basketId: basketId,
       message: option.label + ' is already in the basket for ' + member.initials + '.',
-      basket: buildBasketViewFromLines_(basket, existingLines)
+      basket: basketViewDup
     };
   }
+  perfLog_(perfScope, 'basketAlreadyHasOptionForMember_', t, 'duplicate=false code=' + option.code + ' member=' + member.initials);
 
   const newLine = {
     basketId: basketId,
@@ -49,7 +66,9 @@ function addExtraToBasket(basketId, memberKey, optionCode) {
     notes: ''
   };
 
+  t = perfNow_();
   appendBasketLines_([newLine]);
+  perfLog_(perfScope, 'appendBasketLines_', t, 'basketId=' + basketId + ' rows=1');
 
   const combinedLines = existingLines.concat([{
     rowNumber: 0,
@@ -75,13 +94,20 @@ function addExtraToBasket(basketId, memberKey, optionCode) {
     notes: newLine.notes || ''
   }]);
 
+  t = perfNow_();
   const summary = updateBasketTotalsFromLines_(basket.rowNumber, combinedLines);
   basket.status = summary.status;
+  perfLog_(perfScope, 'updateBasketTotalsFromLines_', t, 'basketId=' + basketId + ' lines=' + combinedLines.length);
+
+  t = perfNow_();
+  const basketView = buildBasketViewFromLines_(basket, combinedLines);
+  perfLog_(perfScope, 'buildBasketViewFromLines_', t, 'basketId=' + basketId + ' members=' + basketView.memberCount + ' total=' + basketView.totalAmount);
+  perfLog_(perfScope, 'total', total, 'basketId=' + basketId + ' member=' + member.initials + ' option=' + option.code);
 
   return {
     basketId: basketId,
     message: option.label + ' added for ' + member.initials + '.',
-    basket: buildBasketViewFromLines_(basket, combinedLines)
+    basket: basketView
   };
 }
 
@@ -164,19 +190,20 @@ function ensureBasketEditable_(basket) {
 
 function addMemberToBasket(basketId, memberRow, sessionDateIso) {
   const total = perfNow_();
+  const perfScope = withPerfRequestScope_('addMemberToBasket', newPerfRequestId_());
   if (!memberRow) throw new Error('Member selection is required.');
   assertIsoDate_(sessionDateIso, 'Session date');
 
   let t = perfNow_();
   const member = getMemberByRow_(memberRow);
-  perfLog_('addMemberToBasket', 'getMemberByRow_', t, 'memberRow=' + memberRow + ' initials=' + member.initials);
+  perfLog_(perfScope, 'getMemberByRow_', t, 'memberRow=' + memberRow + ' initials=' + member.initials);
 
   if (member.status !== SIGNIN_CFG.activeStatusValue) throw new Error('Selected member is not active.');
   if (!member.fullName || !member.sessionName) throw new Error('Selected member record is incomplete.');
 
   t = perfNow_();
   let basket = basketId ? getBasketRecord_(basketId) : null;
-  perfLog_('addMemberToBasket', 'getBasketRecord_', t, 'basketId=' + (basketId || 'NEW'));
+  perfLog_(perfScope, 'getBasketRecord_', t, 'basketId=' + (basketId || 'NEW'));
 
   let existingLines = [];
   if (basket) {
@@ -187,40 +214,40 @@ function addMemberToBasket(basketId, memberRow, sessionDateIso) {
 
     t = perfNow_();
     existingLines = getBasketLineRows_(basketId);
-    perfLog_('addMemberToBasket', 'getBasketLineRows_', t, 'basketId=' + basketId + ' lines=' + existingLines.length);
+    perfLog_(perfScope, 'getBasketLineRows_', t, 'basketId=' + basketId + ' lines=' + existingLines.length);
 
     t = perfNow_();
     if (basketContainsMemberInLines_(existingLines, member.memberKey)) {
-      perfLog_('addMemberToBasket', 'basketContainsMemberInLines_', t, 'already=true');
+      perfLog_(perfScope, 'basketContainsMemberInLines_', t, 'already=true');
       const basketViewDup = buildBasketViewFromLines_(basket, existingLines);
-      perfLog_('addMemberToBasket', 'total', total, 'basketId=' + basketId + ' member=' + member.initials + ' duplicateInBasket=true');
+      perfLog_(perfScope, 'total', total, 'basketId=' + basketId + ' member=' + member.initials + ' duplicateInBasket=true');
       return { basketId: basketId, message: member.initials + ' is already in the basket.', basket: basketViewDup };
     }
-    perfLog_('addMemberToBasket', 'basketContainsMemberInLines_', t, 'already=false');
+    perfLog_(perfScope, 'basketContainsMemberInLines_', t, 'already=false');
   }
 
   t = perfNow_();
   if (alreadySignedIn_(getAttendanceSheet_(), member.fullName, sessionDateIso)) {
-    perfLog_('addMemberToBasket', 'alreadySignedIn_', t, 'already=true date=' + sessionDateIso);
+    perfLog_(perfScope, 'alreadySignedIn_', t, 'already=true date=' + sessionDateIso);
     return {
       basketId: basketId || '',
       message: member.initials + ' is already signed in for ' + sessionDateIso + '.',
       basket: basket ? buildBasketViewFromLines_(basket, existingLines) : null
     };
   }
-  perfLog_('addMemberToBasket', 'alreadySignedIn_', t, 'already=false date=' + sessionDateIso);
+  perfLog_(perfScope, 'alreadySignedIn_', t, 'already=false date=' + sessionDateIso);
 
   if (!basket) {
     t = perfNow_();
     basket = createBasket_(sessionDateIso);
     basketId = basket.basketId;
-    perfLog_('addMemberToBasket', 'createBasket_', t, 'basketId=' + basketId);
+    perfLog_(perfScope, 'createBasket_', t, 'basketId=' + basketId);
     existingLines = [];
   }
 
   t = perfNow_();
   const payment = describeMemberPayment_(member);
-  perfLog_('addMemberToBasket', 'describeMemberPayment_', t, 'required=' + payment.paymentRequired + ' label=' + payment.shortLabel);
+  perfLog_(perfScope, 'describeMemberPayment_', t, 'required=' + payment.paymentRequired + ' label=' + payment.shortLabel);
 
   const newLines = [{
     basketId: basketId,
@@ -248,7 +275,7 @@ function addMemberToBasket(basketId, memberRow, sessionDateIso) {
   if (payment.paymentRequired) {
     t = perfNow_();
     const sessionOption = getSessionPaymentOption_(member.sessionName, sessionDateIso, 'DESK');
-    perfLog_('addMemberToBasket', 'getSessionPaymentOption_', t, 'session=' + member.sessionName + ' code=' + sessionOption.code);
+    perfLog_(perfScope, 'getSessionPaymentOption_', t, 'session=' + member.sessionName + ' code=' + sessionOption.code);
     newLines.push({
       basketId: basketId,
       lineId: newLineId_(),
@@ -275,7 +302,7 @@ function addMemberToBasket(basketId, memberRow, sessionDateIso) {
 
   t = perfNow_();
   appendBasketLines_(newLines);
-  perfLog_('addMemberToBasket', 'appendBasketLines_', t, 'basketId=' + basketId + ' rows=' + newLines.length);
+  perfLog_(perfScope, 'appendBasketLines_', t, 'basketId=' + basketId + ' rows=' + newLines.length);
 
   const combinedLines = existingLines.concat(newLines.map(function(line) {
     return {
@@ -306,13 +333,13 @@ function addMemberToBasket(basketId, memberRow, sessionDateIso) {
   t = perfNow_();
   const summary = updateBasketTotalsFromLines_(basket.rowNumber, combinedLines);
   basket.status = summary.status;
-  perfLog_('addMemberToBasket', 'updateBasketTotalsFromLines_', t, 'basketId=' + basketId + ' lines=' + combinedLines.length);
+  perfLog_(perfScope, 'updateBasketTotalsFromLines_', t, 'basketId=' + basketId + ' lines=' + combinedLines.length);
 
   t = perfNow_();
   const basketView = buildBasketViewFromLines_(basket, combinedLines);
-  perfLog_('addMemberToBasket', 'buildBasketViewFromLines_', t, 'basketId=' + basketId + ' members=' + basketView.memberCount + ' total=' + basketView.totalAmount);
+  perfLog_(perfScope, 'buildBasketViewFromLines_', t, 'basketId=' + basketId + ' members=' + basketView.memberCount + ' total=' + basketView.totalAmount);
 
-  perfLog_('addMemberToBasket', 'total', total, 'basketId=' + basketId + ' member=' + member.initials);
+  perfLog_(perfScope, 'total', total, 'basketId=' + basketId + ' member=' + member.initials);
   return {
     basketId: basketId,
     message: member.initials + ' added to basket.',
