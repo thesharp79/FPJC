@@ -679,11 +679,11 @@ function finaliseBasketForAppCheckout(basketId) {
   }
 
   const checkoutContext = result.appCheckoutContext;
-  t = perfNow_();
-  const payableLines = getPayableSquareLinesFromBasketLines_(basketId, checkoutContext.basketLineRows);
-  perfLog_(perfScope, 'prepareSquarePayableLines_', t, 'basketId=' + basketId + ' lines=' + payableLines.length);
-
   try {
+    t = perfNow_();
+    const payableLines = getPayableSquareLinesFromBasketLines_(basketId, checkoutContext.basketLineRows);
+    perfLog_(perfScope, 'prepareSquarePayableLines_', t, 'basketId=' + basketId + ' lines=' + payableLines.length);
+
     t = perfNow_();
     const payment = createBasketPaymentLinkFromPayableContext_({
       basketId: basketId,
