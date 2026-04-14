@@ -645,10 +645,13 @@ function finaliseBasketDeskInternal_(basketId, paymentMethod, options) {
   };
 
   if (options.includeAppCheckoutContext === true && hasChargeLines) {
+    t = perfNow_();
+    const basketNotes = getBasketNotesByRowNumber_(basket.rowNumber);
+    perfLog_(perfScope, 'getBasketNotesByRowNumber_', t, 'basketId=' + basketId);
     result.appCheckoutContext = {
       basketId: basketId,
       basketRowNumber: basket.rowNumber,
-      basketNotes: basket.notes,
+      basketNotes: basketNotes,
       basketLineRows: basketLineRows
     };
   }
