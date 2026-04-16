@@ -1,5 +1,8 @@
 name: Codex change request
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 on:
   push:
     branches:
@@ -26,6 +29,15 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Preflight required secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${{ secrets.OPENAI_API_KEY }}" ]; then
+            echo "::error::Missing required GitHub Actions secret OPENAI_API_KEY"
+            exit 1
+          fi
+
       - name: Resolve request file
         id: request
         shell: bash
@@ -39,7 +51,7 @@ jobs:
           fi
 
           if [ -z "${REQUEST_FILE:-}" ]; then
-            echo "No request file found."
+            echo "::error::No request file found in .codex/requests/ for this push"
             exit 1
           fi
 
@@ -76,7 +88,6 @@ jobs:
           prompt-file: .codex-runtime-prompt.md
           sandbox: workspace-write
           safety-strategy: drop-sudo
-          model: gpt-5.2-codex
           effort: medium
           output-file: .codex-last-response.md
 
@@ -87,6 +98,7 @@ jobs:
           branch: codex/${{ github.run_id }}-${{ github.run_attempt }}
           base: exp
           delete-branch: true
+          draft: true
           commit-message: "Codex: apply request from ${{ steps.request.outputs.file }}"
           title: "Codex: ${{ steps.request.outputs.file }}"
           body: |
@@ -100,6 +112,3 @@ jobs:
             - openai/codex-action
 
             Review required before merge.
-          labels: |
-            codex
-            automated-pr
