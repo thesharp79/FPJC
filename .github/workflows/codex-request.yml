@@ -81,6 +81,15 @@ jobs:
           echo "## Request contents" >> .codex-runtime-prompt.md
           cat "${{ steps.request.outputs.file }}" >> .codex-runtime-prompt.md
 
+      - name: Preflight required secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${{ secrets.OPENAI_API_KEY }}" ]; then
+            echo "::error::Missing required GitHub Actions secret OPENAI_API_KEY"
+            exit 1
+          fi
+
       - name: Run Codex
         uses: openai/codex-action@v1
         with:
