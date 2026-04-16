@@ -91,6 +91,8 @@ jobs:
           commit-message: "Package Codex request from ${{ steps.request.outputs.file }}"
           title: "Codex request: ${{ steps.request.outputs.basename }}"
           body: |
+            @codex action this request
+
             This PR packages a change request for Codex.
 
             No OpenAI API call was made by GitHub Actions.
