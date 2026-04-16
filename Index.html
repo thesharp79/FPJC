@@ -102,6 +102,19 @@
         color: #fff;
       }
 
+      .pay-link {
+        display: block;
+        padding: 14px 16px;
+        min-height: 54px;
+        font-size: clamp(18px, 2vw, 22px);
+        font-family: inherit;
+        border-radius: 10px;
+        text-align: center;
+        text-decoration: none;
+        line-height: 1.3;
+        cursor: pointer;
+      }
+
       .secondary {
         background: #f0f0f0;
         color: #222;
@@ -365,18 +378,18 @@
             <input id="sessionDate" type="date">
           </div>
           <div>
-            <label for="dob">Player date of birth</label>
+            <label for="dob">Member date of birth</label>
             <input id="dob" type="date">
           </div>
         </div>
 
 
-        <button class="primary full" onclick="lookupMembers()">Find player</button>
+        <button class="primary full" onclick="lookupMembers()">Find member</button>
         <div id="lookupMsg" class="msg hidden"></div>
 
 
         <div id="choicesWrap" class="hidden">
-          <h2 style="margin-top:16px;">Select player</h2>
+          <h2 style="margin-top:16px;">Select member</h2>
           <div id="choices"></div>
         </div>
       </div>
@@ -494,12 +507,6 @@
       }
 
 
-      function openPaymentLink(url) {
-        if (!url) return;
-        window.open(url, '_blank', 'noopener');
-      }
-
-
       function chooseDeskPayment(basketId) {
         if (!basketId) {
           clearPaymentUi();
@@ -541,7 +548,7 @@
 
 
         html += '<div class="actions stack">';
-        html += '<button class="primary full" onclick="openPaymentLink(\'' + escapeJs(payment.paymentLinkUrl || '') + '\')">Pay online</button>';
+        html += '<a class="primary full pay-link" href="' + escapeHtml(payment.paymentLinkUrl || '') + '" target="_top" rel="noopener">Pay online</a>';
         html += '<button class="secondary full" onclick="chooseDeskPayment(\'' + escapeJs(payment.basketId || '') + '\')">Pay at Desk</button>';
         html += '</div>';
 
@@ -603,6 +610,7 @@
         }
 
 
+        setSignInCardVisible(false);
         clearAllMessages();
         clearBasketUi();
         resetChoiceArea();
@@ -616,6 +624,7 @@
           })
           .withFailureHandler(err => {
             setBusy(false);
+            setSignInCardVisible(true);
             showMessage(
               'lookupMsg',
               err && err.message ? err.message : 'Could not check payment status.',
@@ -644,7 +653,7 @@
 
 
         const perf = clientPerfStart('lookupMembers', { dob, sessionDate });
-        setBusy(true, 'Finding player…');
+        setBusy(true, 'Finding member…');
         clientPerfLog(perf, 'before google.script.run');
 
 
@@ -739,7 +748,7 @@
         });
 
 
-        setBusy(true, 'Adding player to basket…');
+        setBusy(true, 'Adding member to basket…');
         clientPerfLog(perf, 'before google.script.run');
 
 
@@ -890,30 +899,26 @@
 
         google.script.run
           .withSuccessHandler(result => {
-            if (result && result.paymentPending) {
-              google.script.run
-                .withSuccessHandler(payment => {
-                  setBusy(false);
-                  clearBasketUi();
-                  resetChoiceArea();
-                  document.getElementById('dob').value = '';
-                  hideMessage('lookupMsg');
-                  renderPaymentPrompt(result.message || 'Sign-in completed. Payment is still pending.', payment);
-                  document.getElementById('dob').focus();
-                })
-                .withFailureHandler(err => {
-                  setBusy(false);
-                  clearBasketUi();
-                  resetChoiceArea();
-                  document.getElementById('dob').value = '';
-                  showMessage(
-                    'lookupMsg',
-                    (result.message || 'Sign-in completed.') + ' Payment link could not be created: ' + (err && err.message ? err.message : 'Unknown error.'),
-                    false
-                  );
-                  document.getElementById('dob').focus();
-                })
-                .createBasketPaymentLink(result.basketId);
+            if (result && result.paymentPending === true) {
+              const payment = result.payment || null;
+              const paymentUrl = payment && payment.paymentLinkUrl ? String(payment.paymentLinkUrl) : '';
+              const paymentError = result.paymentError ? String(result.paymentError) : '';
+
+              setBusy(false);
+              clearBasketUi();
+              resetChoiceArea();
+              document.getElementById('dob').value = '';
+              if (payment && paymentUrl) {
+                hideMessage('lookupMsg');
+                renderPaymentPrompt(result.message || 'Sign-in completed. Payment is still pending.', payment);
+              } else {
+                showMessage(
+                  'lookupMsg',
+                  (result.message || 'Sign-in completed.') + ' Payment link could not be created: ' + (paymentError || 'Unknown error.'),
+                  false
+                );
+              }
+              document.getElementById('dob').focus();
               return;
             }
 
@@ -929,7 +934,7 @@
             setBusy(false);
             showMessage('basketMsg', err && err.message ? err.message : 'Could not complete sign-in.', false);
           })
-          .finaliseBasketDesk(currentBasketId);
+          .finaliseBasketForAppCheckout(currentBasketId);
       }
 
 

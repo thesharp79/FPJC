@@ -596,47 +596,37 @@ function addManualAttendanceRow() {
  * Adds a custom menu to the spreadsheet each time it is opened.
  */
 function onOpen(e) {
-  SpreadsheetApp.getUi()
-    .createMenu('Admin')
-    .addItem('Update Google Form name lists', 'runFormRefreshFromSheet')
-    .addSeparator()
-    .addItem('Preview Square payment sync', 'previewSquareCommercialSyncFromMenu')
-    .addItem('Sync Square payment options', 'runSquareCommercialSyncFromMenu')
-    .addItem('Check Square basket payment', 'checkBasketPaymentStatusFromMenu')
-    .addSeparator()
-    .addItem('Show Square sync settings', 'showSquareSyncSettingsFromMenu')
-    .addItem('Set Square root category', 'setSquareSyncRootCategoryNameFromMenu')
-    .addToUi();
-}
-
-
-/**
- * Wrapper that runs the Form refresh and shows a user-friendly result.
- */
-function runFormRefreshFromSheet() {
   const ui = SpreadsheetApp.getUi();
-  try {
-    ui.alert('Updating…', 'Refreshing Google Form name lists. Please wait.', ui.ButtonSet.OK);
+  const settingsMenu = ui
+    .createMenu('Settings')
+    .addItem('Club settings', 'openClubSettingsFromMenu')
+    .addItem('Square settings', 'openSquareSettingsFromMenu')
+    .addItem('Show settings summary', 'showSettingsSummaryFromMenu')
+    .addItem('Validate configuration', 'validateConfigurationFromMenu');
 
+  const squareMenu = ui
+    .createMenu('Square')
+    .addItem('Sync Square payment options', 'runSquareCommercialSyncFromMenu')
+    .addItem('Reconcile Square basket payment', 'checkBasketPaymentStatusFromMenu');
 
-    buildOrRefreshForm();
+  const adminMenu = ui
+    .createMenu('Admin')
+    .addSubMenu(settingsMenu)
+    .addSubMenu(squareMenu);
 
-
-    ui.alert('Done', 'Google Form name lists have been refreshed successfully.', ui.ButtonSet.OK);
-  } catch (err) {
-    console.error(err);
-
-
-    ui.alert(
-      'Update failed',
-      'The refresh did not complete.\n\n' +
-      'What to do:\n' +
-      '1) Check you are signed into the correct Google account.\n' +
-      '2) Check the "Calc" tab headers are unchanged.\n' +
-      '3) If it still fails, share this message with the admin:\n\n' +
-      String(err && err.message ? err.message : err),
-      ui.ButtonSet.OK
-    );
+  if (isSupportMenuEnabled_()) {
+    const supportToolsMenu = ui
+      .createMenu('Support tools')
+      .addItem('Preview Square payment sync', 'previewSquareCommercialSyncFromMenu')
+      .addItem('Clear sign-in caches', 'clearSignInCachesFromMenu');
+    adminMenu.addSubMenu(supportToolsMenu);
   }
+
+  adminMenu.addToUi();
 }
 
+function isSupportMenuEnabled_() {
+  return String(
+    PropertiesService.getScriptProperties().getProperty('ENABLE_SUPPORT_MENU') || ''
+  ).trim().toLowerCase() === 'true';
+}

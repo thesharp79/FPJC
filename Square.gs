@@ -833,9 +833,9 @@ function getBasketExtendedRecord_(basketId) {
   if (!basket) return null;
 
   const sheet = getBasketsSheet_();
-  const payload = getSheetPayload_(sheet);
-  const idx = payload.headerMap;
-  const row = payload.values[basket.rowNumber - 1];
+  const meta = getHeaderMeta_(sheet);
+  const idx = meta.headerMap;
+  const row = sheet.getRange(basket.rowNumber, 1, 1, meta.lastColumn).getValues()[0];
 
   return {
     rowNumber: basket.rowNumber,
@@ -855,7 +855,11 @@ function getBasketExtendedRecord_(basketId) {
 }
 
 function getBasketPayableLines_(basketId) {
+  const total = perfNow_();
+  const perfScope = withPerfRequestScope_('getBasketPayableLines_', newPerfRequestId_());
+  let t = perfNow_();
   const basket = getBasketExtendedRecord_(basketId);
+  perfLog_(perfScope, 'getBasketExtendedRecord_', t, 'basketId=' + basketId + ' found=' + !!basket);
   if (!basket) {
     throw new Error('Basket not found.');
   }
@@ -864,7 +868,40 @@ function getBasketPayableLines_(basketId) {
     throw new Error('Basket must be in SIGNED_IN_AWAITING_PAYMENT before creating a Square payment link.');
   }
 
+  t = perfNow_();
   const lines = getBasketLineRows_(basketId);
+  perfLog_(perfScope, 'getBasketLineRows_', t, 'basketId=' + basketId + ' lines=' + lines.length);
+  const payableLines = [];
+
+  t = perfNow_();
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    if (line.lineType === 'ATTENDANCE') continue;
+    if (line.paymentRequired !== true) continue;
+    if (line.paid === true) continue;
+
+    if (!String(line.squareVariationId || '').trim()) {
+      throw new Error('Basket line "' + (line.description || line.lineId || 'Unknown') + '" is missing a Square Variation ID.');
+    }
+
+    payableLines.push(line);
+  }
+  perfLog_(perfScope, 'filter payable lines', t, 'basketId=' + basketId + ' payable=' + payableLines.length + ' from=' + lines.length);
+
+  if (!payableLines.length) {
+    throw new Error('Basket has no unpaid Square-payable lines.');
+  }
+
+  perfLog_(perfScope, 'total', total, 'basketId=' + basketId + ' payable=' + payableLines.length);
+
+  return {
+    basket: basket,
+    lines: payableLines
+  };
+}
+
+function getPayableSquareLinesFromBasketLines_(basketId, lines) {
   const payableLines = [];
 
   for (let i = 0; i < lines.length; i++) {
@@ -885,10 +922,7 @@ function getBasketPayableLines_(basketId) {
     throw new Error('Basket has no unpaid Square-payable lines.');
   }
 
-  return {
-    basket: basket,
-    lines: payableLines
-  };
+  return payableLines;
 }
 
 function buildSquareOrderLineItemsFromBasketLines_(lines) {
@@ -915,12 +949,18 @@ function appendBasketNote_(existingText, extraText) {
   return current + ' | ' + extra;
 }
 
-function createBasketPaymentLink(basketId) {
+function createBasketPaymentLinkFromPayableContext_(context) {
+  const total = perfNow_();
+  const perfScope = context.perfScope || withPerfRequestScope_('createBasketPaymentLinkFromPayableContext_', newPerfRequestId_());
+
+  let t = perfNow_();
   const cfg = getSquareConfig_();
-  const payable = getBasketPayableLines_(basketId);
-  const basket = payable.basket;
-  const lines = payable.lines;
+  perfLog_(perfScope, 'getSquareConfig_', t, '');
+
+  const lines = context.lines || [];
+  t = perfNow_();
   const lineItems = buildSquareOrderLineItemsFromBasketLines_(lines);
+  perfLog_(perfScope, 'buildSquareOrderLineItemsFromBasketLines_', t, 'lineItems=' + lineItems.length);
 
   let totalAmount = 0;
   for (let i = 0; i < lines.length; i++) {
@@ -933,10 +973,10 @@ function createBasketPaymentLink(basketId) {
   const appUrl = ScriptApp.getService().getUrl();
   const returnUrl =
     appUrl +
-    '?returnFrom=square&basketId=' + encodeURIComponent(basketId);
+    '?returnFrom=square&basketId=' + encodeURIComponent(context.basketId);
 
   const body = {
-    idempotency_key: 'basket-link-' + basketId,
+    idempotency_key: 'basket-link-' + context.basketId,
     order: {
       location_id: cfg.locationId,
       line_items: lineItems
@@ -948,24 +988,29 @@ function createBasketPaymentLink(basketId) {
     }
   };
 
+  t = perfNow_();
   const result = squareRequest_('/online-checkout/payment-links', 'post', body);
+  perfLog_(perfScope, 'squareRequest_', t, 'endpoint=/online-checkout/payment-links');
   const paymentLink = result.payment_link || {};
 
-  updateBasketRow_(basket.rowNumber, {
+  t = perfNow_();
+  updateBasketRow_(context.basketRowNumber, {
     'Settlement Method': SIGNIN_CFG.paymentMethods.app,
     'Total Amount': totalAmount,
     'Square Order ID': paymentLink.order_id || '',
     'Square Payment Link ID': paymentLink.id || '',
     'Notes': appendBasketNote_(
-      basket.notes,
+      context.basketNotes,
       'Square payment link created on ' +
         Utilities.formatDate(new Date(), SIGNIN_CFG.timezone, 'dd/MM/yyyy HH:mm:ss')
     )
   });
+  perfLog_(perfScope, 'updateBasketRow_square_', t, 'basketId=' + context.basketId + ' linkId=' + (paymentLink.id || ''));
+  perfLog_(perfScope, 'total_square_', total, 'basketId=' + context.basketId + ' lines=' + lines.length + ' amount=' + totalAmount);
 
   return {
     ok: true,
-    basketId: basketId,
+    basketId: context.basketId,
     paymentLinkId: paymentLink.id || '',
     paymentLinkUrl: paymentLink.url || '',
     orderId: paymentLink.order_id || '',
@@ -973,6 +1018,25 @@ function createBasketPaymentLink(basketId) {
     formattedAmount: formatCurrency_(totalAmount),
     returnUrl: returnUrl
   };
+}
+
+function createBasketPaymentLink(basketId) {
+  const total = perfNow_();
+  const perfScope = withPerfRequestScope_('createBasketPaymentLink', newPerfRequestId_());
+  let t = perfNow_();
+  const payable = getBasketPayableLines_(basketId);
+  perfLog_(perfScope, 'getBasketPayableLines_', t, 'basketId=' + basketId + ' lines=' + payable.lines.length);
+  t = perfNow_();
+  const response = createBasketPaymentLinkFromPayableContext_({
+    basketId: basketId,
+    basketRowNumber: payable.basket.rowNumber,
+    basketNotes: payable.basket.notes,
+    lines: payable.lines,
+    perfScope: perfScope
+  });
+  perfLog_(perfScope, 'createBasketPaymentLinkFromPayableContext_', t, 'basketId=' + basketId);
+  perfLog_(perfScope, 'total', total, 'basketId=' + basketId + ' lines=' + payable.lines.length + ' amount=' + response.amount);
+  return response;
 }
 
 function getSquareOrder_(orderId) {
@@ -1003,7 +1067,11 @@ function extractPaymentIdFromSquareOrder_(order) {
 }
 
 function checkBasketPaymentStatus(basketId) {
+  const total = perfNow_();
+  const perfScope = withPerfRequestScope_('checkBasketPaymentStatus', newPerfRequestId_());
+  let t = perfNow_();
   const basket = getBasketExtendedRecord_(basketId);
+  perfLog_(perfScope, 'getBasketExtendedRecord_', t, 'basketId=' + basketId + ' found=' + !!basket);
   if (!basket) {
     throw new Error('Basket not found.');
   }
@@ -1012,13 +1080,17 @@ function checkBasketPaymentStatus(basketId) {
     throw new Error('Basket does not yet have a Square Order ID.');
   }
 
+  t = perfNow_();
   const response = getSquareOrder_(basket.squareOrderId);
+  perfLog_(perfScope, 'getSquareOrder_', t, 'basketId=' + basketId + ' orderId=' + basket.squareOrderId);
+  t = perfNow_();
   const order = response.order || {};
   const orderState = String(order.state || '').trim().toUpperCase();
   const amountDueMinor = Number(((order.net_amount_due_money || {}).amount) || 0);
   const squarePaymentId = extractPaymentIdFromSquareOrder_(order);
 
   const isPaid = (orderState === 'COMPLETED') || (amountDueMinor === 0 && orderState !== 'CANCELED');
+  perfLog_(perfScope, 'evaluate payment state', t, 'basketId=' + basketId + ' orderState=' + orderState + ' due=' + amountDueMinor + ' isPaid=' + isPaid);
 
   let resolved = false;
   if (
@@ -1026,9 +1098,13 @@ function checkBasketPaymentStatus(basketId) {
     basket.status !== SIGNIN_CFG.basketStatuses.paymentResolved &&
     basket.status !== SIGNIN_CFG.basketStatuses.posted
   ) {
+    t = perfNow_();
     resolveBasketPaymentApp(basketId, squarePaymentId);
+    perfLog_(perfScope, 'resolveBasketPaymentApp', t, 'basketId=' + basketId + ' paymentId=' + (squarePaymentId || ''));
     resolved = true;
   }
+
+  perfLog_(perfScope, 'total', total, 'basketId=' + basketId + ' resolved=' + resolved + ' orderState=' + orderState);
 
   return {
     ok: true,
@@ -1046,7 +1122,7 @@ function checkBasketPaymentStatusFromMenu() {
   const ui = SpreadsheetApp.getUi();
 
   const response = ui.prompt(
-    'Check Square basket payment',
+    'Reconcile Square basket payment',
     'Enter the Basket ID to check and reconcile if paid.',
     ui.ButtonSet.OK_CANCEL
   );
